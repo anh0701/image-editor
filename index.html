@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mini Image Editor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="toolbar">
+    <input type="file" id="fileInput" accept="image/*" />
+    <label>Line: <input type="number" id="lineWidthInput" value="8" min="1" max="50"></label>
+    <button onclick="setTool('draw')">Draw</button>
+    <button onclick="setTool('rect')">Rect</button>
+    <button onclick="setTool('arrow')">Arrow</button>
+    <button onclick="setTool('text')">Text</button>
+    <button onclick="setTool('blur')">Blur</button>
+    <input type="color" id="colorPicker" value="#ff0000" />
+    <button onclick="undo()">Undo</button>
+    <button onclick="redo()">Redo</button>
+    <button onclick="saveImage()">Save</button>
+  </div>
+  <canvas id="canvas" width="800" height="600"></canvas>
+
+  <script src="script.js"></script>
+</body>
+</html>
