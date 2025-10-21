@@ -37,3 +37,12 @@ button {
 button:hover {
   background: #eee;
 }
+
+input {
+  z-index: 1000;
+  font-size: 20px;
+  padding: 2px 4px;
+  border: 1px solid #333;
+  border-radius: 3px;
+}
+
