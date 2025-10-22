@@ -1,276 +1,316 @@
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const fileInput = document.getElementById('fileInput');
-const colorPicker = document.getElementById('colorPicker');
-const lineWidthInput = document.getElementById('lineWidthInput');
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const fileInput = document.getElementById("fileInput");
 
-let tool = 'draw';
-let color = colorPicker.value;
-let lineWidth = parseInt(lineWidthInput.value,10);
-let fontSize = 20; // default font size for text
-
-let bgImage = null;
+// Tool state
+let tool = "rect";
 let drawing = false;
 let startX = 0, startY = 0;
-let previewRect = null;
+let img = null;
+
+// Settings
+let drawColor = document.getElementById("colorPicker").value;
+let lineThickness = parseInt(document.getElementById("lineWidth").value);
+let textSize = parseInt(document.getElementById("fontSize").value);
+
+// History
 let history = [];
 let historyIndex = -1;
-let snapshot = null;
-let texts = [];
-let textInput = null;
+let baseImageData = null; // lưu ImageData sau mỗi thao tác hoàn tất
 
-// --- Tool & color ---
-function setTool(t){ tool = t; }
-colorPicker.onchange = e => color = e.target.value;
-lineWidthInput.onchange = e => lineWidth = parseInt(e.target.value,10);
+// Temporary canvas for live preview
+let tempCanvas = document.createElement("canvas");
+let tempCtx = tempCanvas.getContext("2d");
+tempCanvas.width = canvas.width;
+tempCanvas.height = canvas.height;
 
-// --- Load image ---
-fileInput.onchange = e=>{
-  const f = e.target.files[0];
-  if(!f) return;
-  const img = new Image();
-  img.onload = ()=>{
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img,0,0);
-    bgImage = img;
-    history = [];
-    texts = [];
-    pushHistory();
-  };
-  img.src = URL.createObjectURL(f);
+let textInput;
+
+// ---------------------- Text Input -----------------------
+function setupTextInput() {
+  textInput = document.createElement("input");
+  textInput.type = "text";
+  textInput.placeholder = "Nhập text...";
+  Object.assign(textInput.style, {
+    position: "absolute",
+    display: "none",
+    zIndex: 1000,
+    fontSize: textSize + "px",
+    border: "1px solid #333",
+    borderRadius: "4px",
+    padding: "4px 6px",
+    background: "white",
+    color: "black",
+    transition: "all 0.2s ease",
+    minWidth: "80px",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+  });
+
+  textInput.addEventListener("focus", () => {
+    textInput.style.borderColor = "#0056b3";
+    textInput.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
+  });
+
+  textInput.addEventListener("blur", () => {
+    textInput.style.borderColor = "#007bff";
+    textInput.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+  });
+  document.body.appendChild(textInput);
+
+  textInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const val = textInput.value.trim();
+      if (val) {
+        const x = parseFloat(textInput.dataset.x);
+        const y = parseFloat(textInput.dataset.y);
+        ctx.save();
+        ctx.font = `${textSize}px sans-serif`;
+        ctx.fillStyle = drawColor;
+        ctx.fillText(val, x, y);
+        ctx.restore();
+
+        // Cập nhật baseImageData và history
+        baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        saveHistory();
+      }
+      textInput.style.display = "none";
+    } else if (e.key === "Escape") {
+      textInput.style.display = "none";
+    }
+  });
+}
+setupTextInput();
+
+// ---------------------- History --------------------------
+function saveHistory() {
+  if (historyIndex < history.length - 1) {
+    history = history.slice(0, historyIndex + 1);
+  }
+  history.push(canvas.toDataURL());
+  historyIndex = history.length - 1;
+  if (history.length > 50) history.shift();
+}
+
+function undo() {
+  if (historyIndex > 0) {
+    historyIndex--;
+    const imgData = new Image();
+    imgData.src = history[historyIndex];
+    imgData.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imgData, 0, 0);
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    };
+  }
+}
+
+function redo() {
+  if (historyIndex < history.length - 1) {
+    historyIndex++;
+    const imgData = new Image();
+    imgData.src = history[historyIndex];
+    imgData.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imgData, 0, 0);
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    };
+  }
+}
+
+// ---------------------- Drawing --------------------------
+canvas.addEventListener("pointerdown", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  startX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  startY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  drawing = true;
+  if (tool === "pen") {
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+  } else if (tool === "text") {
+    canvas.releasePointerCapture(e.pointerId);
+    const screenX = e.clientX;
+    const screenY = e.clientY;
+    textInput.style.left = `${screenX}px`;
+    textInput.style.top = `${screenY}px`;
+    textInput.style.display = "block";
+    textInput.value = "";
+    textInput.style.fontSize = textSize + "px";
+    textInput.dataset.x = startX;
+    textInput.dataset.y = startY;
+    requestAnimationFrame(() => textInput.focus());
+    drawing = false;
+  }
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!drawing || tool === "text") return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+  if (tool === "pen") {
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = lineThickness;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    return;
+  }
+
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+  drawShape(tempCtx, startX, startY, x, y);
+
+  if (baseImageData) {
+    ctx.putImageData(baseImageData, 0, 0);
+  } else if (img) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  ctx.drawImage(tempCanvas, 0, 0);
+
+});
+
+canvas.addEventListener("pointerup", (e) => {
+  if (!drawing || tool === "text") return;
+  drawing = false;
+
+  if (tool === "pen") {
+    ctx.closePath();
+    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    saveHistory();
+    return;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+  drawShape(ctx, startX, startY, x, y);
+
+  baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  saveHistory();
+});
+
+function drawShape(context, x1, y1, x2, y2) {
+  context.save();
+  context.lineWidth = lineThickness;
+  context.strokeStyle = drawColor;
+  context.fillStyle = drawColor;
+
+  if (tool === "rect") {
+    context.strokeRect(x1, y1, x2 - x1, y2 - y1);
+  } else if (tool === "arrow") {
+    drawArrow(context, x1, y1, x2, y2);
+  }
+
+  context.restore();
+}
+
+function drawArrow(ctx, x1, y1, x2, y2) {
+  const headlen = 10 + lineThickness;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const angle = Math.atan2(dy, dx);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(
+    x2 - headlen * Math.cos(angle - Math.PI / 6),
+    y2 - headlen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    x2 - headlen * Math.cos(angle + Math.PI / 6),
+    y2 - headlen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ---------------------- Toolbar --------------------------
+document.getElementById("rectBtn").onclick = () => (tool = "rect");
+document.getElementById("arrowBtn").onclick = () => (tool = "arrow");
+document.getElementById("textBtn").onclick = () => (tool = "text");
+document.getElementById("penBtn").onclick = () => (tool = "pen");
+
+document.getElementById("undoBtn").onclick = undo;
+document.getElementById("redoBtn").onclick = redo;
+
+document.getElementById("clearBtn").onclick = () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  history = [];
+  historyIndex = -1;
+  baseImageData = null;
+  if (img) {
+    const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
+    const w = img.width * ratio;
+    const h = img.height * ratio;
+    ctx.drawImage(img, 0, 0, w, h);
+    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    saveHistory();
+  }
 };
 
-// --- Pointer position with scaling ---
-function getPointerPos(e){
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
-  const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
-  return { 
-    x: Math.round((clientX - rect.left) * scaleX), 
-    y: Math.round((clientY - rect.top) * scaleY) 
+document.getElementById("openBtn").onclick = () => fileInput.click();
+
+// ---------------------- Settings --------------------------
+document.getElementById("colorPicker").oninput = (e) => (drawColor = e.target.value);
+document.getElementById("lineWidth").oninput = (e) => (lineThickness = parseInt(e.target.value));
+document.getElementById("fontSize").oninput = (e) => (textSize = parseInt(e.target.value));
+
+// ---------------------- Open Image -----------------------
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(
+        canvas.width / img.width,
+        canvas.height / img.height
+      );
+      const w = img.width * ratio;
+      const h = img.height * ratio;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      saveHistory();
+    };
+    img.src = ev.target.result;
   };
-}
-
-// --- Pointer events ---
-canvas.addEventListener('pointerdown', e=>{
-  if(!bgImage) return;
-  const p = getPointerPos(e);
-  startX = p.x; startY = p.y;
-
-  if(tool==='draw'){
-    drawing=true;
-    ctx.beginPath();
-    ctx.moveTo(startX,startY);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap='round';
-    ctx.lineJoin='round';
-  } else if(['rect','arrow','blur'].includes(tool)){
-    drawing=true;
-    previewRect = {x:startX, y:startY, w:0, h:0};
-    snapshot = ctx.getImageData(0,0,canvas.width,canvas.height);
-  } else if(tool==='text'){
-    openTextInputAt(p.x,p.y);
-  }
+  reader.readAsDataURL(file);
 });
 
-canvas.addEventListener('pointermove', e=>{
-  if(!bgImage || !drawing) return;
-  const p = getPointerPos(e);
+// ---------------------- Save Image -----------------------
+document.getElementById("saveBtn").onclick = saveImage;
 
-  if(tool==='draw'){
-    ctx.lineTo(p.x,p.y); ctx.stroke();
-  } else if(previewRect){
-    previewRect.w = p.x - previewRect.x;
-    previewRect.h = p.y - previewRect.y;
-    ctx.putImageData(snapshot,0,0);
-    drawPreview(tool, previewRect);
+function saveImage() {
+  const link = document.createElement("a");
+  link.download = "edited-image.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+// ---------------------- Keyboard Shortcuts -----------------------
+window.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    undo();
+  } else if (e.ctrlKey && e.key.toLowerCase() === "y") {
+    e.preventDefault();
+    redo();
+  } else if (e.ctrlKey && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    saveImage();
   }
-});
-
-canvas.addEventListener('pointerup', e=>{
-  if(!bgImage || !drawing) return;
-  const p = getPointerPos(e);
-
-  if(tool==='draw'){
-    drawing=false; pushHistory();
-  } else if(previewRect){
-    previewRect.w = p.x - previewRect.x;
-    previewRect.h = p.y - previewRect.y;
-    applyShape(tool, previewRect);
-    previewRect=null;
-    drawing=false;
-    pushHistory();
-  }
-});
-
-// --- Draw preview ---
-function drawPreview(toolName, rect){
-  if(!rect) return;
-  ctx.save();
-  ctx.setLineDash([6,4]);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
-  drawShape(ctx, toolName, rect);
-  ctx.restore();
-}
-
-// --- Draw shape ---
-function drawShape(ctxObj, toolName, rect){
-  const {x,y,w,h} = rect;
-  switch(toolName){
-    case 'rect': ctxObj.strokeRect(x,y,w,h); break;
-    case 'arrow': drawArrow(ctxObj,x,y,x+w,y+h); break;
-    case 'blur': ctxObj.strokeRect(x,y,w,h); break;
-  }
-}
-
-// --- Apply shape ---
-function applyShape(toolName, rect){
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
-  if(toolName==='blur'){ applyBlurRect(rect); }
-  else if(toolName==='rect' || toolName==='arrow'){ drawShape(ctx,toolName,rect); }
-  ctx.restore();
-}
-
-// --- Arrow ---
-function drawArrow(context, fromX, fromY, toX, toY){
-  const headlen=15;
-  const angle=Math.atan2(toY-fromY,toX-fromX);
-  context.beginPath();
-  context.moveTo(fromX,fromY);
-  context.lineTo(toX,toY);
-  context.stroke();
-  context.beginPath();
-  context.moveTo(toX,toY);
-  context.lineTo(toX-headlen*Math.cos(angle-Math.PI/6), toY-headlen*Math.sin(angle-Math.PI/6));
-  context.moveTo(toX,toY);
-  context.lineTo(toX-headlen*Math.cos(angle+Math.PI/6), toY-headlen*Math.sin(angle+Math.PI/6));
-  context.stroke();
-}
-
-// --- Blur ---
-function applyBlurRect(rect){
-  const x=Math.min(rect.x,rect.x+rect.w)|0;
-  const y=Math.min(rect.y,rect.y+rect.h)|0;
-  const w=Math.abs(rect.w)|0;
-  const h=Math.abs(rect.h)|0;
-  if(w<=0||h<=0)return;
-  const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
-  const tctx=tmp.getContext('2d'); tctx.drawImage(canvas,x,y,w,h,0,0,w,h);
-  const blurred=document.createElement('canvas'); blurred.width=w; blurred.height=h;
-  const bctx=blurred.getContext('2d'); bctx.filter='blur(8px)'; bctx.drawImage(tmp,0,0);
-  ctx.drawImage(blurred,x,y);
-}
-
-// --- Text ---
-textInput = document.createElement('input');
-textInput.type='text';
-textInput.style.position='absolute';
-textInput.style.display='none';
-document.body.appendChild(textInput);
-
-function openTextInputAt(x,y){
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-
-  textInput.style.left = (rect.left + x/scaleX)+'px';
-  textInput.style.top = (rect.top + y/scaleY)+'px';
-  textInput.style.position = 'absolute';
-  textInput.style.display = 'block';
-  textInput.style.zIndex = 1000;
-  textInput.style.border = '1px solid #333';
-  textInput.style.padding = '2px 4px';
-  textInput.value='';
-  textInput.focus();
-
-  function commit(){
-    const txt=textInput.value.trim();
-    if(txt){
-      texts.push({x,y,text:txt,color,size:fontSize});
-      pushHistory();
-      renderTexts();
-    }
-    textInput.style.display='none';
-    textInput.removeEventListener('keydown',onKey);
-    document.removeEventListener('pointerdown',onClickOutside);
-  }
-
-  function onKey(e){ if(e.key==='Enter'){commit();} if(e.key==='Escape'){textInput.style.display='none';} }
-  function onClickOutside(e){ if(e.target!==textInput) commit(); }
-
-  textInput.addEventListener('keydown',onKey);
-  document.addEventListener('pointerdown',onClickOutside);
-}
-
-// --- Render texts ---
-function renderTexts(){
-  ctx.save();
-  for(const t of texts){
-    ctx.font = t.size+'px sans-serif';
-    ctx.fillStyle = t.color;
-    ctx.fillText(t.text,t.x,t.y);
-  }
-  ctx.restore();
-}
-
-// --- History ---
-function pushHistory(){
-  if(historyIndex<history.length-1) history = history.slice(0,historyIndex+1);
-
-  const snap = canvas.toDataURL('image/png');
-  const txts = JSON.parse(JSON.stringify(texts));
-  history.push({image:snap,texts:txts});
-  historyIndex=history.length-1;
-}
-
-function undo(){
-  if(historyIndex<=0) return;
-  historyIndex--; restoreHistory(historyIndex);
-}
-function redo(){
-  if(historyIndex>=history.length-1) return;
-  historyIndex++; restoreHistory(historyIndex);
-}
-
-function restoreHistory(idx){
-  const entry = history[idx];
-  if(!entry) return;
-  const img = new Image();
-  img.onload = ()=>{
-    canvas.width=img.width;
-    canvas.height=img.height;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img,0,0);
-    texts = JSON.parse(JSON.stringify(entry.texts));
-    renderTexts();
-  };
-  img.src = entry.image;
-}
-
-// --- Save image ---
-function saveImage(){
-  const out=document.createElement('canvas'); out.width=canvas.width; out.height=canvas.height;
-  const octx = out.getContext('2d');
-  octx.drawImage(canvas,0,0);
-  for(const t of texts){
-    octx.font = t.size+'px sans-serif';
-    octx.fillStyle = t.color;
-    octx.fillText(t.text,t.x,t.y);
-  }
-  const url = out.toDataURL('image/png');
-  const a = document.createElement('a'); a.href=url; a.download='edited.png'; a.click();
-}
-
-// --- Keyboard shortcuts ---
-window.addEventListener('keydown', e=>{
-  if(e.ctrlKey && e.key==='z'){ undo(); e.preventDefault(); }
-  if(e.ctrlKey && e.key==='y'){ redo(); e.preventDefault(); }
 });
