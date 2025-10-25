@@ -12,21 +12,25 @@
   <div class="toolbar">
     <input type="file" id="fileInput" accept="image/*" hidden />
     <button id="openBtn">Open</button>
+
+    <button id="selectBtn">Select</button>
+
     <button id="penBtn">Pen</button>
     <button id="rectBtn">Rect</button>
     <button id="arrowBtn">Arrow</button>
     <button id="textBtn">Text</button>
+    
     <select id="textAlign">
       <option value="left">Trái</option>
       <option value="center">Giữa</option>
       <option value="right">Phải</option>
     </select>
-
-
+    
     <button id="undoBtn">Undo</button>
     <button id="redoBtn">Redo</button>
-    <button id="saveBtn">Save</button>
     <button id="clearBtn">Clear</button>
+    <button id="saveBtn">Save</button>
+    
     <label>Color: <input type="color" id="colorPicker" value="#ff0000" /></label>
     <label>Line: <input type="number" id="lineWidth" value="3" min="1" max="20" /></label>
     <label>Font: <input type="number" id="fontSize" value="20" min="10" max="100" /></label>
