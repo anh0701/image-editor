@@ -36,6 +36,9 @@ let tempCtx = tempCanvas.getContext("2d");
 tempCanvas.width = canvas.width;
 tempCanvas.height = canvas.height;
 
+saveHistory();
+baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
 // --- text input area ---
 let textInput;
 function setupTextInput() {
