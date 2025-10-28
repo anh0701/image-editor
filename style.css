@@ -41,6 +41,7 @@ button {
 }
 
 canvas {
+  touch-action: none;
   margin-top: 10px;
   background: white;
   border: 1px solid #ccc;
