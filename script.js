@@ -441,3 +441,66 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault(); redo();
   }
 });
+
+
+// ---------------------- Pinch Zoom Support ----------------------
+let scale = 1;
+let originX = 0;
+let originY = 0;
+let lastTouchDistance = 0;
+let lastCenter = null;
+
+function getDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getCenter(touches) {
+  return {
+    x: (touches[0].clientX + touches[1].clientX) / 2,
+    y: (touches[0].clientY + touches[1].clientY) / 2
+  };
+}
+
+canvas.addEventListener("touchstart", (e) => {
+  if (e.touches.length === 2) {
+    lastTouchDistance = getDistance(e.touches);
+    lastCenter = getCenter(e.touches);
+  }
+}, { passive: false });
+
+
+canvas.addEventListener("touchmove", (e) => {
+  if (e.touches.length === 2) {
+    e.preventDefault(); 
+    const newDistance = getDistance(e.touches);
+    const newCenter = getCenter(e.touches);
+
+    const scaleChange = newDistance / lastTouchDistance;
+    scale *= scaleChange;
+
+    scale = Math.min(Math.max(scale, 0.5), 4);
+
+    originX -= (newCenter.x - lastCenter.x) / scale;
+    originY -= (newCenter.y - lastCenter.y) / scale;
+
+    lastTouchDistance = newDistance;
+    lastCenter = newCenter;
+
+    redrawWithTransform();
+  }
+}, { passive: false });
+
+canvas.addEventListener("touchend", (e) => {
+  if (e.touches.length < 2) {
+    lastTouchDistance = 0;
+    lastCenter = null;
+  }
+});
+
+function redrawWithTransform() {
+  ctx.setTransform(scale, 0, 0, scale, originX, originY);
+  redrawAll();
+}
+
