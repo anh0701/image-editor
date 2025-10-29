@@ -206,3 +206,18 @@ document.getElementById("openBtn").onclick = () => fileInput.click();
 document.getElementById("colorPicker").oninput = (e) => CanvasCore.setDrawColor(e.target.value);
 document.getElementById("lineWidth").oninput = (e) => CanvasCore.setLineWidth(parseInt(e.target.value));
 document.getElementById("fontSize").oninput = (e) => CanvasCore.setFontSize(parseInt(e.target.value));
+
+
+//--------------------------- menu -------------------------
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const toolbarItems = document.getElementById("toolbarItems");
+
+mobileMenuBtn.addEventListener("click", () => {
+  toolbarItems.classList.toggle("show");
+});
+
+document.addEventListener("click", (e) => {
+  if (!toolbarItems.contains(e.target) && e.target !== mobileMenuBtn) {
+    toolbarItems.classList.remove("show");
+  }
+});

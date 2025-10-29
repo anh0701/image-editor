@@ -21,8 +21,25 @@ export const CanvasCore = (function () {
   function init(c) {
     canvas = c;
     ctx = canvas.getContext("2d");
-    saveHistory();
+    if (img) {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+    } else {
+      const displayWidth = canvas.clientWidth;
+      const displayHeight = canvas.clientHeight;
+
+      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+        ctx.putImageData(imgData, 0, 0);
+      }
+    }
+
     baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    saveHistory();
   }
 
   // ---------------------- Shape & Drawing ----------------------
