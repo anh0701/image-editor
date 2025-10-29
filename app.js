@@ -1,6 +1,7 @@
 import { CanvasCore } from './functions.js';
 
 const canvas = document.getElementById("canvas");
+const fileInput = document.getElementById("fileInput");
 CanvasCore.init(canvas);
 
 let tool = "rect", drawing = false, startX = 0, startY = 0;
@@ -188,6 +189,8 @@ canvas.addEventListener("touchend", (e) => {
   }
 });
 
+fileInput.addEventListener("change", (e) => CanvasCore.openImage(e));
+
 
 // ---------------------- Toolbar ----------------------
 document.getElementById("rectBtn").onclick = () => tool = "rect";
@@ -199,6 +202,22 @@ document.getElementById("undoBtn").onclick = () => CanvasCore.undo();
 document.getElementById("redoBtn").onclick = () => CanvasCore.redo();
 document.getElementById("clearBtn").onclick = () => CanvasCore.clear();
 document.getElementById("saveBtn").onclick = () => CanvasCore.save();
+document.getElementById("openBtn").onclick = () => fileInput.click();
 document.getElementById("colorPicker").oninput = (e) => CanvasCore.setDrawColor(e.target.value);
 document.getElementById("lineWidth").oninput = (e) => CanvasCore.setLineWidth(parseInt(e.target.value));
 document.getElementById("fontSize").oninput = (e) => CanvasCore.setFontSize(parseInt(e.target.value));
+
+
+//--------------------------- menu -------------------------
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const toolbarItems = document.getElementById("toolbarItems");
+
+mobileMenuBtn.addEventListener("click", () => {
+  toolbarItems.classList.toggle("show");
+});
+
+document.addEventListener("click", (e) => {
+  if (!toolbarItems.contains(e.target) && e.target !== mobileMenuBtn) {
+    toolbarItems.classList.remove("show");
+  }
+});

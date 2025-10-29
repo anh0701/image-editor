@@ -9,6 +9,7 @@ export const CanvasCore = (function () {
   let history = [];
   let historyIndex = -1;
   let baseImageData = null;
+  let img = null;
 
   // --- config ---
   let drawColor = "#000000";
@@ -20,8 +21,25 @@ export const CanvasCore = (function () {
   function init(c) {
     canvas = c;
     ctx = canvas.getContext("2d");
-    saveHistory();
+    if (img) {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+    } else {
+      const displayWidth = canvas.clientWidth;
+      const displayHeight = canvas.clientHeight;
+
+      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+        ctx.putImageData(imgData, 0, 0);
+      }
+    }
+
     baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    saveHistory();
   }
 
   // ---------------------- Shape & Drawing ----------------------
@@ -268,12 +286,61 @@ export const CanvasCore = (function () {
     redrawAll();
   }
 
+  // ----------------- open image --------
+
+  function openImage(e) {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (ev) => {
+
+      img = new Image();
+
+      img.onload = () => {
+
+        shapes = [];
+
+        selectedShape = null;
+
+        // const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
+
+        // ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // ctx.drawImage(img, 0, 0, img.width * ratio, img.height * ratio);
+
+        // baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // saveHistory();
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        saveHistory();
+        redrawAll();
+
+      };
+
+      img.src = ev.target.result;
+
+    };
+
+    reader.readAsDataURL(file);
+  }
+
   return {
     init, getCtx, getShapes, getSelectedShape, setSelectedShape,
     getDrawColor, getLineThickness, getTextSize, getTextAlign, setConfig,
     getShapeBounds, moveShape, drawShape, redrawAll,
     saveHistory, undo, redo, save, addTextShape, clear,
     setDrawColor, setFontSize, setLineWidth,
-    getCenter, redrawWithTransform, getDistance
+    getCenter, redrawWithTransform, getDistance, openImage
   };
 })();
