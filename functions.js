@@ -335,12 +335,73 @@ export const CanvasCore = (function () {
     reader.readAsDataURL(file);
   }
 
+  function enableClipboardPaste() {
+    document.addEventListener("paste", (event) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const blob = item.getAsFile();
+          const imgPaste = new Image();
+
+          imgPaste.onload = () => {
+
+            // update height/width canvas
+            if (canvas.width < imgPaste.width || canvas.height < imgPaste.height) {
+              canvas.width = Math.max(canvas.width, imgPaste.width);
+              canvas.height = Math.max(canvas.height, imgPaste.height);
+            } else {
+              canvas.width = Math.min(canvas.width, imgPaste.width);
+              canvas.height = Math.min(canvas.height, imgPaste.height);
+            }
+
+            // draw img
+            const x = (canvas.width - imgPaste.width) / 2;
+            const y = (canvas.height - imgPaste.height) / 2;
+            ctx.drawImage(imgPaste, x, y);
+
+            baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            saveHistory();
+            redrawAll();
+
+            URL.revokeObjectURL(imgPaste.src);
+          };
+
+          imgPaste.src = URL.createObjectURL(blob);
+          break;
+        }
+      }
+    });
+  }
+
+  async function copyToClipboard() {
+
+    try {
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) return false;
+
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob })
+      ]);
+
+      console.log("✅ Canvas copied to clipboard!");
+      return true;
+    } catch (err) {
+      console.error("❌ Copy failed:", err);
+      return false;
+    }
+  }
+
+
+
   return {
     init, getCtx, getShapes, getSelectedShape, setSelectedShape,
     getDrawColor, getLineThickness, getTextSize, getTextAlign, setConfig,
     getShapeBounds, moveShape, drawShape, redrawAll,
     saveHistory, undo, redo, save, addTextShape, clear,
     setDrawColor, setFontSize, setLineWidth,
-    getCenter, redrawWithTransform, getDistance, openImage
+    getCenter, redrawWithTransform, getDistance, openImage,
+    enableClipboardPaste, copyToClipboard
   };
 })();
