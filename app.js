@@ -3,6 +3,7 @@ import { CanvasCore } from './functions.js';
 const canvas = document.getElementById("canvas");
 const fileInput = document.getElementById("fileInput");
 CanvasCore.init(canvas);
+CanvasCore.enableClipboardPaste();
 
 let tool = "rect", drawing = false, startX = 0, startY = 0;
 let dragging = false, offsetX = 0, offsetY = 0, currentPen = null;
@@ -189,6 +190,8 @@ canvas.addEventListener("touchend", (e) => {
   }
 });
 
+// --------------- open img -----------------------
+
 fileInput.addEventListener("change", (e) => CanvasCore.openImage(e));
 
 
@@ -206,6 +209,15 @@ document.getElementById("openBtn").onclick = () => fileInput.click();
 document.getElementById("colorPicker").oninput = (e) => CanvasCore.setDrawColor(e.target.value);
 document.getElementById("lineWidth").oninput = (e) => CanvasCore.setLineWidth(parseInt(e.target.value));
 document.getElementById("fontSize").oninput = (e) => CanvasCore.setFontSize(parseInt(e.target.value));
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  const ok = await CanvasCore.copyToClipboard();
+  if (ok) {
+    alert("Đã copy vào clipboard!");
+  } else {
+    alert("Copy thất bại!");
+  }
+
+});
 
 
 //--------------------------- menu -------------------------
@@ -221,3 +233,26 @@ document.addEventListener("click", (e) => {
     toolbarItems.classList.remove("show");
   }
 });
+
+// ---------------------- Shortcuts -----------------------
+
+window.addEventListener("keydown", (e) => {
+
+  if (e.ctrlKey && e.key.toLowerCase() === "z") {
+
+    e.preventDefault(); undo();
+
+  } else if (e.ctrlKey && e.key.toLowerCase() === "y") {
+
+    e.preventDefault(); redo();
+
+  } else if (e.ctrlKey && e.key.toLowerCase() === "s") {
+
+    e.preventDefault();  CanvasCore.save(); 
+
+  } else if (e.ctrlKey && e.key.toLowerCase() === "c"){
+
+    e.preventDefault(); CanvasCore.copyToClipboard();
+    
+  }
+}); 
