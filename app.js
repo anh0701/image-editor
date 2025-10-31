@@ -248,11 +248,16 @@ window.addEventListener("keydown", (e) => {
 
   } else if (e.ctrlKey && e.key.toLowerCase() === "s") {
 
-    e.preventDefault();  CanvasCore.save(); 
+    e.preventDefault(); CanvasCore.save();
 
-  } else if (e.ctrlKey && e.key.toLowerCase() === "c"){
+  } else if (e.ctrlKey && e.key.toLowerCase() === "c") {
 
-    e.preventDefault(); CanvasCore.copyToClipboard();
-    
+    e.preventDefault();
+    CanvasCore.copyToClipboard().then(ok => {
+      alert(ok ? "Đã copy vào clipboard!" : "Copy thất bại!");
+    }).catch(err => {
+      console.error("Lỗi khi copy:", err);
+    });
+
   }
 }); 
