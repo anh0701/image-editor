@@ -23,9 +23,12 @@ body {
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   justify-content: center;
-  position: sticky;
-  top: 0; 
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000; 
+  width: 90%;
 }
 
 .toolbar button,
@@ -53,10 +56,11 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 10px;
+  margin-top: 50px; 
   width: 100%;
   max-width: 100%;
   overflow: auto;
+  padding-top: 10px;
 }
 
 canvas {
@@ -80,7 +84,6 @@ canvas {
   top: 10px;
   right: 10px;
   z-index: 1001;
-  margin-left: auto;
 }
 
 .toolbar-items {
@@ -88,6 +91,22 @@ canvas {
   flex-wrap: wrap;
   gap: 5px;
   justify-content: center;
+}
+
+select#textAlign {
+  text-align: center; 
+  text-align-last: center; 
+  padding: 6px 12px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+select#textAlign option {
+  text-align: center;
+  padding: 4px 8px;
 }
 
 @media (max-width: 600px) {
@@ -114,9 +133,19 @@ canvas {
     display: flex; 
   }
 
+  .toolbar {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: 100%;
+    justify-content: flex-start;
+    flex-direction: column;
+  }
+
   .canvas-wrapper {
-    margin-top: 20%;
-    padding-right: 0;
+    margin-top: 0;
+    padding-top: 60px; 
   }
 
   canvas {
