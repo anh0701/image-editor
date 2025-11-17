@@ -215,7 +215,10 @@ stickerInput.addEventListener("change", (e) => {
   const x = canvas.width / 2;
   const y = canvas.height / 2;
 
-  CanvasCore.addSticker(x, y, url, { width: 100, height: 100 });
+  const maxWidth = canvas.width * 0.3;
+  const maxHeight = canvas.height * 0.3;
+
+  CanvasCore.addSticker(x, y, url, { width: maxWidth, height: maxHeight });
   stickerInput.value = "";
 });
 
