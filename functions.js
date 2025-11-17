@@ -1,4 +1,3 @@
-// canvas-core.js
 export const CanvasCore = (function () {
   // --- canvas & context ---
   let canvas, ctx;
@@ -75,12 +74,15 @@ export const CanvasCore = (function () {
   function getShapeBounds(shape) {
     if (!shape) return { x: 0, y: 0, w: 0, h: 0 };
     if (shape.type === "rect" || shape.type === "arrow") {
+
       const x = Math.min(shape.x1, shape.x2);
       const y = Math.min(shape.y1, shape.y2);
       const w = Math.abs(shape.x2 - shape.x1);
       const h = Math.abs(shape.y2 - shape.y1);
       return { x: x - 6, y: y - 6, w: w + 12, h: h + 12 };
+
     } else if (shape.type === "text") {
+
       ctx.save();
       ctx.font = `${shape.fontSize}px sans-serif`;
       const width = ctx.measureText(shape.text).width;
@@ -90,7 +92,9 @@ export const CanvasCore = (function () {
       else if (shape.align === "right") x -= width;
       const h = shape.fontSize * 1.4;
       return { x: x - 6, y: shape.y - 6, w: width + 12, h: h + 12 };
+
     } else if (shape.type === "pen") {
+
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const p of shape.points) {
         minX = Math.min(minX, p.x);
@@ -98,12 +102,22 @@ export const CanvasCore = (function () {
         maxX = Math.max(maxX, p.x);
         maxY = Math.max(maxY, p.y);
       }
+
       if (minX === Infinity) return { x: 0, y: 0, w: 0, h: 0 };
       return {
         x: minX - shape.lineWidth - 6, y: minY - shape.lineWidth - 6,
         w: (maxX - minX) + shape.lineWidth + 12, h: (maxY - minY) + shape.lineWidth + 12
       };
     }
+    else if (shape.type === "sticker") {
+      return {
+        x: shape.x,
+        y: shape.y,
+        w: shape.width,
+        h: shape.height
+      };
+    }
+
     return { x: 0, y: 0, w: 0, h: 0 };
   }
 
@@ -116,6 +130,8 @@ export const CanvasCore = (function () {
       shape.x += dx; shape.y += dy;
     } else if (shape.type === "pen") {
       shape.points.forEach(p => { p.x += dx; p.y += dy; });
+    }else if (shape.type === "sticker") {
+        shape.x += dx; shape.y += dy;
     }
   }
 
@@ -142,6 +158,10 @@ export const CanvasCore = (function () {
       shape.points.forEach((p, i) => i === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y));
       context.stroke();
     }
+    else if (shape.type === "sticker") {
+      context.drawImage(shape.img, shape.x, shape.y, shape.width, shape.height);
+    }
+
     context.restore();
   }
 
@@ -393,6 +413,22 @@ export const CanvasCore = (function () {
     }
   }
 
+  function addSticker(x, y, src, options = {}) {
+    const stickerImg = new Image();
+    stickerImg.onload = () => {
+      const shape = {
+        type: "sticker",
+        x, y,
+        img: stickerImg,
+        width: options.width || stickerImg.width,
+        height: options.height || stickerImg.height
+      };
+      shapes.push(shape);
+      redrawAll();
+      saveHistory();
+    };
+    stickerImg.src = src;
+  }
 
 
   return {
@@ -402,6 +438,6 @@ export const CanvasCore = (function () {
     saveHistory, undo, redo, save, addTextShape, clear,
     setDrawColor, setFontSize, setLineWidth,
     getCenter, redrawWithTransform, getDistance, openImage,
-    enableClipboardPaste, copyToClipboard
+    enableClipboardPaste, copyToClipboard, addSticker
   };
 })();

@@ -22,6 +22,7 @@ tempCanvas.height = canvas.height;
 
 // ---------------------- Text Input ----------------------
 let textInput = document.createElement("textarea");
+const stickerInput = document.getElementById("stickerInput");
 textInput.placeholder = "Nhập text... (Shift+Enter xuống dòng, Enter xác nhận)";
 Object.assign(textInput.style, { position: "absolute", display: "none", zIndex: 1000 });
 document.body.appendChild(textInput);
@@ -88,6 +89,17 @@ canvas.addEventListener("pointerdown", (e) => {
     }
     CanvasCore.redrawAll();
   }
+
+  if (tool == "sticker") {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+  
+    // mở file sticker
+    stickerInput.click();
+    return;
+  }
+
 });
 
 canvas.addEventListener("pointermove", (e) => {
@@ -194,6 +206,20 @@ canvas.addEventListener("touchend", (e) => {
 
 fileInput.addEventListener("change", (e) => CanvasCore.openImage(e));
 
+stickerInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+
+  // sticker center
+  const x = canvas.width / 2;
+  const y = canvas.height / 2;
+
+  CanvasCore.addSticker(x, y, url, { width: 100, height: 100 });
+  stickerInput.value = "";
+});
+
+
 
 // ---------------------- Toolbar ----------------------
 document.getElementById("rectBtn").onclick = () => tool = "rect";
@@ -218,6 +244,11 @@ document.getElementById("copyBtn").addEventListener("click", async () => {
   }
 
 });
+
+document.getElementById("stickerBtn").onclick = () => {
+  tool = "sticker";
+  stickerInput.click();
+};
 
 
 //--------------------------- menu -------------------------
