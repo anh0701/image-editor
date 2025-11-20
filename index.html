@@ -4,51 +4,59 @@
 <head>
   <meta charset="UTF-8">
   <title>Simple Image Editor</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets/css/style.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+  <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0/dist/tf.min.js"></script>
 </head>
 
 <body>
 
   <button id="mobileMenuBtn" class="mobile-menu-btn">☰</button>
-<div id="toolbarItems" class="toolbar-items">
-  <div class="toolbar">
-    <input type="file" id="fileInput" accept="image/*" hidden />
-    <button id="openBtn">Open</button>
+  <div id="toolbarItems" class="toolbar-items">
+    <div class="toolbar">
+      <input type="file" id="fileInput" accept="image/*" hidden />
+      <button id="openBtn">Open</button>
 
-    <input type="file" accept="image/*" id="stickerInput" hidden>
-    <button id="stickerBtn">Sticker</button>
+      <input type="file" accept="image/*" id="stickerInput" hidden>
+      <button id="stickerBtn">Sticker</button>
 
-    <button id="selectBtn">Select</button>
+      <button id="selectBtn">Select</button>
 
-    <button id="penBtn">Pen</button>
-    <button id="rectBtn">Rect</button>
-    <button id="arrowBtn">Arrow</button>
-    <button id="textBtn">Text</button>
+      <button id="penBtn">Pen</button>
+      <button id="rectBtn">Rect</button>
+      <button id="arrowBtn">Arrow</button>
+      <button id="textBtn">Text</button>
 
-    <select id="textAlign">
-      <option value="" disabled selected>Chọn căn lề</option>
-      <option value="left">Trái</option>
-      <option value="center">Giữa</option>
-      <option value="right">Phải</option>
-    </select>
+      <select id="textAlign">
+        <option value="" disabled selected>Chọn căn lề</option>
+        <option value="left">Trái</option>
+        <option value="center">Giữa</option>
+        <option value="right">Phải</option>
+      </select>
 
-    <button id="undoBtn">Undo</button>
-    <button id="redoBtn">Redo</button>
-    <button id="clearBtn">Clear</button>
-    <button id="copyBtn">Copy</button>
-    <button id="saveBtn">Save</button>
+      <button id="removeBtn">Remove Background</button>
+      <label><input type="radio" name="mode" value="selfie_segmentation" checked> Selfie Segmentation</label>
+      <label><input type="radio" name="mode" value="grabcut" > GrabCut</label>
+      <!-- <label><input type="radio" name="mode" value="u2net"> U²-Net</label> -->
 
-    <label>Color: <input type="color" id="colorPicker" value="#000000" /></label>
-    <label>Line: <input type="number" id="lineWidth" value="3" min="1" max="20" /></label>
-    <label>Font: <input type="number" id="fontSize" value="20" min="10" max="100" /></label>
+      <button id="undoBtn">Undo</button>
+      <button id="redoBtn">Redo</button>
+      <button id="clearBtn">Clear</button>
+      <button id="copyBtn">Copy</button>
+      <button id="saveBtn">Save</button>
+
+      <label>Color: <input type="color" id="colorPicker" value="#000000" /></label>
+      <label>Line: <input type="number" id="lineWidth" value="3" min="1" max="20" /></label>
+      <label>Font: <input type="number" id="fontSize" value="20" min="10" max="100" /></label>
+    </div>
   </div>
-</div>
   <div class="canvas-wrapper">
     <canvas id="canvas"></canvas>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="assets/js/app.js"></script>
 
 </body>
 

@@ -253,6 +253,24 @@ document.getElementById("stickerBtn").onclick = () => {
   stickerInput.click();
 };
 
+document.getElementById("removeBtn").addEventListener("click", async () => {
+  try {
+
+    await CanvasCore.removeBackground();
+    alert("✅ Tách nền xong!");
+
+  } catch (err) {
+    console.error("Lỗi tách nền: ", err);
+    alert("❌ Tách nền thất bại! " + err);
+  }
+});
+
+document.querySelectorAll('input[name="mode"]').forEach(r=>{
+  r.addEventListener("change", e=>{
+    CanvasCore.setRemoveMode(e.target.value); // "grabcut" hoặc "selfie"
+  });
+});
+
 
 //--------------------------- menu -------------------------
 const mobileMenuBtn = document.getElementById("mobileMenuBtn");
