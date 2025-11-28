@@ -11,25 +11,29 @@ export default class ImageLoader {
     this.onLoadCallback = callback;
   }
 
-  openImage(event) {
+  openImage(event, callback) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
+
     reader.onload = (ev) => {
-      this.img = new Image();
-      this.img.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // resize canvas theo ảnh
+        this.canvas.width = img.width;
+        this.canvas.height = img.height;
 
-        this.canvas.width = this.img.width;
-        this.canvas.height = this.img.height;
-
+        // clear + vẽ ảnh
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.drawImage(this.img, 0, 0);
+        this.ctx.drawImage(img, 0, 0);
 
-        if (this.onLoadCallback) this.onLoadCallback(this.img);
+        // callback trả ảnh về CanvasCore
+        if (callback) callback(img);
       };
-      this.img.src = ev.target.result;
+      img.src = ev.target.result;
     };
+
     reader.readAsDataURL(file);
   }
 

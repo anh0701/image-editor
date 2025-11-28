@@ -24,7 +24,7 @@ export class CanvasCore {
     // config
     this.drawColor = "#000000";
     this.lineWidth = 3;
-    this.fontSize = 16;
+    this.fontSize = 20;
     this.textAlign = "left";
 
     // selection
@@ -53,13 +53,14 @@ export class CanvasCore {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       if (canvas.width !== w || canvas.height !== h) {
-        try {
+        // try {
           const data = this.ctx.getImageData(0, 0, canvas.width, canvas.height);
           canvas.width = w; canvas.height = h;
           this.ctx.putImageData(data, 0, 0);
-        } catch {
-          canvas.width = w; canvas.height = h;
-        }
+        // } 
+        // catch {
+          // canvas.width = w; canvas.height = h;
+        // }
       }
     }
 
@@ -112,7 +113,7 @@ export class CanvasCore {
     if (!this.ctx || !this.canvas) return;
 
     const ctx = this.ctx;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (this.baseImageData)
@@ -232,17 +233,28 @@ export class CanvasCore {
 
   // --------------- OPEN IMAGE ----------------
   openImage(e) {
-    this.loader.openImage(e, (loadedImg) => {
-      this.img = loadedImg;
-      this.canvas.width = loadedImg.width;
-      this.canvas.height = loadedImg.height;
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.ctx.drawImage(loadedImg, 0, 0);
-      this.baseImageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-      this.shapes = [];
-      this.saveHistory();
-    });
-  }
+  this.loader.openImage(e, (loadedImg) => {
+    this.img = loadedImg;
+
+    // reset shapes và UI state
+    this.shapes = [];
+    this.selectedShape = null;
+
+    // lưu base image
+    this.baseImageData = this.ctx.getImageData(
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    this.saveHistory();
+
+    // vẽ lại toàn bộ
+    if (this.redrawAll) this.redrawAll();
+  });
+}
+
 
   enableClipboardPaste() {
     this.loader.enableClipboardPaste();
