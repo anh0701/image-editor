@@ -1,9 +1,9 @@
-import { CanvasCore } from './functions.js';
-import { RectShape } from './shapes/RectShape.js';
-import { ArrowShape } from './shapes/ArrowShape.js';
-import { PenShape } from './shapes/PenShape.js';
-import { TextShape } from './shapes/TextShape.js';
-import { StickerShape } from './shapes/StickerShape.js';
+import { CanvasCore } from './lib/CanvasCore.js';
+import { RectShape } from './lib/shapes/RectShape.js';
+import { ArrowShape } from './lib/shapes/ArrowShape.js';
+import { PenShape } from './lib/shapes/PenShape.js';
+import { TextShape } from './lib/shapes/TextShape.js';
+import { StickerShape } from './lib/shapes/StickerShape.js';
 
 const canvas = document.getElementById("canvas");
 const fileInput = document.getElementById("fileInput");

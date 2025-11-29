@@ -1,5 +1,5 @@
-import { HistoryManager } from "./HistoryManager.js";
-import ImageLoader from "./ImageLoader.js";
+import { HistoryManager } from "./manager/HistoryManager.js";
+import ImageLoader from "./manager/ImageLoader.js";
 import { ArrowShape } from "./shapes/ArrowShape.js";
 import { CircleShape } from "./shapes/CircleShape.js";
 import { PenShape } from "./shapes/PenShape.js";
@@ -54,12 +54,12 @@ export class CanvasCore {
       const h = canvas.clientHeight;
       if (canvas.width !== w || canvas.height !== h) {
         // try {
-          const data = this.ctx.getImageData(0, 0, canvas.width, canvas.height);
-          canvas.width = w; canvas.height = h;
-          this.ctx.putImageData(data, 0, 0);
+        const data = this.ctx.getImageData(0, 0, canvas.width, canvas.height);
+        canvas.width = w; canvas.height = h;
+        this.ctx.putImageData(data, 0, 0);
         // } 
         // catch {
-          // canvas.width = w; canvas.height = h;
+        // canvas.width = w; canvas.height = h;
         // }
       }
     }
@@ -172,7 +172,7 @@ export class CanvasCore {
       case "pen": return new PenShape(obj.points, obj);
       case "circle": return new CircleShape(obj.x, obj.y, obj.radius, obj);
       case "sticker":
-        const i = new Image(); 
+        const i = new Image();
         i.src = obj.src || "";
         return new StickerShape(obj.x, obj.y, i, obj.width, obj.height);
       default: return obj;
@@ -210,7 +210,7 @@ export class CanvasCore {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    try { while (this.history.undo()) {} } catch {}
+    try { while (this.history.undo()) { } } catch { }
 
     this.shapes = [];
     this.selectedShape = null;
@@ -223,7 +223,7 @@ export class CanvasCore {
   save() {
     this.redrawAll();
     const now = new Date();
-    const ts = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
+    const ts = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
 
     const link = document.createElement("a");
     link.download = `edited-image-${ts}.png`;
@@ -233,27 +233,27 @@ export class CanvasCore {
 
   // --------------- OPEN IMAGE ----------------
   openImage(e) {
-  this.loader.openImage(e, (loadedImg) => {
-    this.img = loadedImg;
+    this.loader.openImage(e, (loadedImg) => {
+      this.img = loadedImg;
 
-    // reset shapes và UI state
-    this.shapes = [];
-    this.selectedShape = null;
+      // reset shapes và UI state
+      this.shapes = [];
+      this.selectedShape = null;
 
-    // lưu base image
-    this.baseImageData = this.ctx.getImageData(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height
-    );
+      // lưu base image
+      this.baseImageData = this.ctx.getImageData(
+        0,
+        0,
+        this.canvas.width,
+        this.canvas.height
+      );
 
-    this.saveHistory();
+      this.saveHistory();
 
-    // vẽ lại toàn bộ
-    if (this.redrawAll) this.redrawAll();
-  });
-}
+      // vẽ lại toàn bộ
+      if (this.redrawAll) this.redrawAll();
+    });
+  }
 
 
   enableClipboardPaste() {
@@ -380,7 +380,7 @@ export class CanvasCore {
       result.delete(); rgba.delete();
 
     } catch (err) {
-      try { src.delete(); } catch {}
+      try { src.delete(); } catch { }
       console.error("GrabCut error:", err);
       throw err;
     }
