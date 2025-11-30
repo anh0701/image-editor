@@ -8,7 +8,7 @@ export class RectShape extends BaseShape {
     this.x2 = x2;
     this.y2 = y2;
     this.color = color;
-    this.lineWidth = lineWidth;
+    this.lineWidth = lineWidth || 3;
   }
 
   draw(ctx) {

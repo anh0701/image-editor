@@ -20,15 +20,7 @@ export default class ImageLoader {
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        // resize canvas theo ảnh
-        this.canvas.width = img.width;
-        this.canvas.height = img.height;
 
-        // clear + vẽ ảnh
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.drawImage(img, 0, 0);
-
-        // callback trả ảnh về CanvasCore
         if (callback) callback(img);
       };
       img.src = ev.target.result;

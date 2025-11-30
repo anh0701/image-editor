@@ -43,30 +43,11 @@ export class CanvasCore {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.loader = new ImageLoader(canvas);
-
-    if (this.img) {
-      canvas.width = this.img.width;
-      canvas.height = this.img.height;
-      this.ctx.clearRect(0, 0, canvas.width, canvas.height);
-      this.ctx.drawImage(this.img, 0, 0);
-    } else {
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
-      if (canvas.width !== w || canvas.height !== h) {
-        // try {
-        const data = this.ctx.getImageData(0, 0, canvas.width, canvas.height);
-        canvas.width = w; canvas.height = h;
-        this.ctx.putImageData(data, 0, 0);
-        // } 
-        // catch {
-        // canvas.width = w; canvas.height = h;
-        // }
-      }
-    }
-
+    
     this.baseImageData = this.ctx.getImageData(0, 0, canvas.width, canvas.height);
     this.saveHistory();
   }
+
 
 
   // ---------------- SHAPES ----------------
@@ -113,27 +94,35 @@ export class CanvasCore {
     if (!this.ctx || !this.canvas) return;
 
     const ctx = this.ctx;
-    // ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    ctx.save();
+
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    if (this.baseImageData)
-      ctx.putImageData(this.baseImageData, 0, 0);
+    if (this.baseImageData) {
+      const temp = document.createElement("canvas");
+      temp.width = this.baseImageData.width;
+      temp.height = this.baseImageData.height;
+      temp.getContext("2d").putImageData(this.baseImageData, 0, 0);
+      ctx.drawImage(temp, 0, 0);
+    }
 
     this.shapes.forEach(s => this.drawShape(ctx, s));
 
     if (this.selectedShape) {
       const b = this.getShapeBounds(this.selectedShape);
-      ctx.save();
       ctx.strokeStyle = "rgba(0,120,255,0.9)";
       ctx.lineWidth = 1;
       ctx.setLineDash([6, 4]);
       ctx.strokeRect(b.x, b.y, b.w, b.h);
-      ctx.restore();
     }
 
     if (this.selectionRect && this.removeMode === "grabcut")
       this.drawSelectionRect();
+
+    ctx.restore();
   }
+
 
   // --------------- HISTORY ----------------
   saveHistory() {
@@ -233,27 +222,36 @@ export class CanvasCore {
 
   // --------------- OPEN IMAGE ----------------
   openImage(e) {
-    this.loader.openImage(e, (loadedImg) => {
-      this.img = loadedImg;
+  this.loader.openImage(e, (loadedImg) => {
+    this.img = loadedImg;
 
-      // reset shapes và UI state
-      this.shapes = [];
-      this.selectedShape = null;
+    // reset shapes
+    this.shapes = [];
+    this.selectedShape = null;
 
-      // lưu base image
-      this.baseImageData = this.ctx.getImageData(
-        0,
-        0,
-        this.canvas.width,
-        this.canvas.height
-      );
+    const maxW = this.canvas.clientWidth;
+    this.scale = loadedImg.width > maxW ? maxW / loadedImg.width : 1;
 
-      this.saveHistory();
+    // resize canvas theo scale
+    this.canvas.width = loadedImg.width * this.scale;
+    this.canvas.height = loadedImg.height * this.scale;
 
-      // vẽ lại toàn bộ
-      if (this.redrawAll) this.redrawAll();
-    });
-  }
+    // lưu base image nhưng không vẽ trực tiếp
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = this.canvas.width;
+    tempCanvas.height = this.canvas.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    tempCtx.drawImage(loadedImg, 0, 0);
+    this.baseImageData = tempCtx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+
+    // lưu lịch sử và vẽ lần đầu qua redrawAll
+    this.saveHistory();
+    this.redrawAll();
+  });
+}
+
+
 
 
   enableClipboardPaste() {
