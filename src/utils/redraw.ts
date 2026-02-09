@@ -9,7 +9,8 @@ export function redraw({
   arrows,
   texts,
   width,
-  height
+  height,
+  backgroundImage
 }: {
   ctx: CanvasRenderingContext2D
   rects: any[]
@@ -18,10 +19,16 @@ export function redraw({
   texts: any[]
   width: number
   height: number
+  backgroundImage?: HTMLImageElement | null
 }) {
   ctx.clearRect(0, 0, width, height)
-  ctx.fillStyle = '#f5f5f5'
-  ctx.fillRect(0, 0, width, height)
+
+  if (backgroundImage) {
+    ctx.drawImage(backgroundImage, 0, 0, width, height)
+  } else {
+    ctx.fillStyle = '#f5f5f5'
+    ctx.fillRect(0, 0, width, height)
+  }
 
   rects.forEach(r => {
     ctx.strokeStyle = r.color
@@ -33,3 +40,4 @@ export function redraw({
   arrows.forEach(a => drawArrow(ctx, a))
   texts.forEach(t => drawText(ctx, t))
 }
+

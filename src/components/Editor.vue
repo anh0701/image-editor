@@ -1,54 +1,75 @@
 <template>
+  <div class="editor-wrapper">
+
     <div class="toolbar">
-        <button @click="setTool('select')">Select</button>
-        <button @click="setTool('rect')">Rect</button>
-        <button @click="setTool('pen')">Pen</button>
-        <button @click="setTool('arrow')">Arrow</button>
+      <div class="tool-group">
+        <label class="file-btn">
+          Open image
+          <input type="file" accept="image/*" @change="onOpenImage" hidden />
+        </label>
+      </div>
 
+      <div class="tool-group">
+        <!-- <button @click="setTool('select')"
+          :class="{ active: currentTool === 'select' }">Select</button> -->
+        <button @click="setTool('rect')"
+          :class="{ active: currentTool === 'rect' }">Rect</button>
+        <button @click="setTool('pen')"
+          :class="{ active: currentTool === 'pen' }">Pen</button>
+        <button @click="setTool('arrow')"
+          :class="{ active: currentTool === 'arrow' }">Arrow</button>
+      </div>
+
+      <div class="tool-group">
         <input type="color" v-model="strokeColor" />
-        <input type="range" min="1" max="10" v-model.number="strokeWidth" />
-        <span>{{ strokeWidth }}</span>
-
-        <button @click="setTool('text')">Text</button>
-
         <input
-        type="number"
-        min="10"
-        max="72"
-        v-model.number="fontSize"
+          type="range"
+          min="1"
+          max="10"
+          v-model.number="strokeWidth"
         />
+        <span class="value value-chip">{{ strokeWidth }}</span>
+      </div>
+
+      <div class="tool-group">
+        <button @click="setTool('text')">Text</button>
+        <input
+          type="number"
+          min="10"
+          max="72"
+          v-model.number="fontSize"
+        />
+      </div>
     </div>
-    
-    <div style="position: relative; width: 1200px; height: 700px">
-    <canvas
-        ref="canvasRef"
-        width="1200"
-        height="700"
-        @mousedown="onDown"
-        @mousemove="onMove"
-        @mouseup="onUp"
-        style="border:1px solid #ccc"
-    />
-
-    <input
-        v-if="isTyping"
-        v-model="textValue"
-        :style="{
-        position: 'absolute',
-        left: textX + 'px',
-        top: textY + 'px',
-        fontSize: fontSize + 'px',
-        color: strokeColor,
-        border: '1px dashed #aaa',
-        outline: 'none',
-        background: 'transparent'
-        }"
-        @keydown.enter.prevent="commitText"
-        @blur="commitText"
-    />
+    <div>
+      <canvas
+          ref="canvasRef"
+          width="1200"
+          height="700"
+          @mousedown="onDown"
+          @mousemove="onMove"
+          @mouseup="onUp"
+          style="border:1px solid #ccc"
+      />
+  
+      <input
+          v-if="isTyping"
+          v-model="textValue"
+          :style="{
+          position: 'absolute',
+          left: textX + 'px',
+          top: textY + 'px',
+          fontSize: fontSize + 'px',
+          color: strokeColor,
+          border: '1px dashed #aaa',
+          outline: 'none',
+          background: 'transparent'
+          }"
+          @keydown.enter.prevent="commitText"
+          @blur="commitText"
+      />
     </div>
-
-
+  </div>   
 
 </template>
 
@@ -62,6 +83,8 @@ import type { CanvasText } from '../types/Text'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D | null = null
+const backgroundImage = ref<HTMLImageElement | null>(null)
+
 
 onMounted(() => {
   ctx = canvasRef.value!.getContext('2d')
@@ -187,6 +210,19 @@ function onUp() {
   render()
 }
 
+function onOpenImage(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  const img = new Image()
+  img.onload = () => {
+    backgroundImage.value = img
+    render()
+  }
+  img.src = URL.createObjectURL(file)
+}
+
+
 function render() {
   if (!ctx) return
 
@@ -197,7 +233,8 @@ function render() {
     arrows: tempArrow ? [...arrows, tempArrow] : arrows,
     texts,
     width: 1200,
-    height: 700
+    height: 700,
+    backgroundImage: backgroundImage.value
   })
 }
 
@@ -225,16 +262,12 @@ function commitText() {
     arrows,
     texts,
     width: 1200,
-    height: 700
+    height: 700,
+    backgroundImage: backgroundImage.value
   })
 }
 
 </script>
 
-<style>
-.toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-</style>
+<style src="./Editor.css" scoped></style>
+
