@@ -40,6 +40,13 @@
           v-model.number="fontSize"
         />
       </div>
+
+      <div class="tool-group">
+        <button @click="undo">Undo</button>
+        <button @click="redo">Redo</button>
+        <button @click="clearCanvas">Clear</button>
+      </div>
+
     </div>
     <div>
       <canvas
@@ -80,15 +87,23 @@ import type { PenStroke } from '../types/PenStroke'
 import type { Arrow } from '../types/Arrow'
 import { redraw } from '../utils/redraw'
 import type { CanvasText } from '../types/Text'
+import type { EditorState } from '../types/EditorState'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D | null = null
 const backgroundImage = ref<HTMLImageElement | null>(null)
 
+function initHistory() {
+  undoStack.length = 0
+  redoStack.length = 0
+  undoStack.push(snapshot()) 
+}
+
 
 onMounted(() => {
   ctx = canvasRef.value!.getContext('2d')
   if (!ctx) return
+  initHistory()
   render()
 })
 
@@ -108,6 +123,9 @@ const rects: Rect[] = []
 const penStrokes: PenStroke[] = []
 const arrows: Arrow[] = []
 const texts: CanvasText[] = []
+const undoStack: EditorState[] = []
+const redoStack: EditorState[] = []
+
 
 const isTyping = ref(false)
 const textValue = ref('')
@@ -207,6 +225,7 @@ function onUp() {
   if (tempRect) rects.push(tempRect)
 
   resetTemp()
+  pushHistory()
   render()
 }
 
@@ -217,6 +236,7 @@ function onOpenImage(e: Event) {
   const img = new Image()
   img.onload = () => {
     backgroundImage.value = img
+    pushHistory()
     render()
   }
   img.src = URL.createObjectURL(file)
@@ -255,17 +275,81 @@ function commitText() {
 
   isTyping.value = false
 
-  redraw({
-    ctx: ctx!,
-    rects,
-    penStrokes,
-    arrows,
-    texts,
-    width: 1200,
-    height: 700,
-    backgroundImage: backgroundImage.value
-  })
+  pushHistory()
+  render()
 }
+
+function snapshot(): EditorState {
+  return {
+    rects: structuredClone(rects),
+    penStrokes: structuredClone(penStrokes),
+    arrows: structuredClone(arrows),
+    texts: structuredClone(texts),
+    backgroundImage: backgroundImage.value
+  }
+}
+
+function pushHistory() {
+  undoStack.push(snapshot())
+  redoStack.length = 0 
+}
+
+function undo() {
+  if (undoStack.length === 0) return
+
+  const current = snapshot()
+  redoStack.push(current)
+
+  const prev = undoStack.pop()!
+
+  rects.length = 0
+  penStrokes.length = 0
+  arrows.length = 0
+  texts.length = 0
+
+  rects.push(...prev.rects)
+  penStrokes.push(...prev.penStrokes)
+  arrows.push(...prev.arrows)
+  texts.push(...prev.texts)
+  backgroundImage.value = prev.backgroundImage
+
+  render()
+}
+
+function redo() {
+  if (redoStack.length === 0) return
+
+  const current = snapshot()
+  undoStack.push(current)
+
+  const next = redoStack.pop()!
+
+  rects.length = 0
+  penStrokes.length = 0
+  arrows.length = 0
+  texts.length = 0
+
+  rects.push(...next.rects)
+  penStrokes.push(...next.penStrokes)
+  arrows.push(...next.arrows)
+  texts.push(...next.texts)
+  backgroundImage.value = next.backgroundImage
+
+  render()
+}
+
+function clearCanvas() {
+  pushHistory()
+
+  rects.length = 0
+  penStrokes.length = 0
+  arrows.length = 0
+  texts.length = 0
+  backgroundImage.value = null
+
+  render()
+}
+
 
 </script>
 
