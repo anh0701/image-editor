@@ -12,12 +12,14 @@ body {
 
 .editor-wrapper {
   position: relative;
-  width: 1200px;
+  width: 100%;
+  max-width: 1200px;
   height: 700px;
   margin: 60px auto;
 }
 
 .editor-wrapper canvas {
+  touch-action: none; 
   width: 100%;
   height: 100%;
   background: #fff;
@@ -25,22 +27,14 @@ body {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
 }
 
-.toolbar {
-  position: absolute;
-  top: -90px;
-  left: 50%;
-  transform: translateX(-50%);
+.toolbar-sheet {
+  z-index: 1000;
+}
 
+.toolbar {
   display: flex;
   align-items: center;
   gap: 14px;
-
-  padding: 10px 14px;
-  background: rgba(40, 40, 40, 0.85);
-  backdrop-filter: blur(10px);
-  border-radius: 14px;
-
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .tool-group {
@@ -106,36 +100,15 @@ body {
 .toolbar input[type="number"] {
   height: 32px;
   width: 60px;
+  padding: 0 8px;
 
   font-size: 14px;
-  line-height: 1;
   font-weight: 500;
 
-  padding: 0 8px;
   border-radius: 6px;
   border: 1px solid #444;
-
   background: #1f1f1f;
   color: #fff;
-
-  display: inline-flex;
-  align-items: center;
-}
-
-.toolbar span {
-  min-width: 20px;
-  text-align: center;
-  font-size: 13px;
-  opacity: 0.85;
-}
-
-.editor-wrapper input[type="text"] {
-  position: absolute;
-  padding: 2px 4px;
-  border-radius: 4px;
-  border: 1px dashed rgba(0, 0, 0, 0.4);
-  background: rgba(255, 255, 255, 0.6);
-  color: #000;
 }
 
 .toolbar .value-chip {
@@ -147,7 +120,6 @@ body {
   justify-content: center;
 
   font-size: 14px;
-  line-height: 1;
   font-weight: 500;
 
   background: #1f1f1f;
@@ -157,9 +129,6 @@ body {
 
 .toolbar select {
   appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-
   background-color: #2b2b2b;
   color: #fff;
 
@@ -168,10 +137,7 @@ body {
 
   padding: 6px 32px 6px 12px;
   font-size: 14px;
-  line-height: 1.4;
-
   cursor: pointer;
-  outline: none;
 
   background-image:
     linear-gradient(45deg, transparent 50%, #aaa 50%),
@@ -179,17 +145,102 @@ body {
   background-position:
     calc(100% - 18px) 55%,
     calc(100% - 12px) 55%;
-  background-size:
-    6px 6px,
-    6px 6px;
+  background-size: 6px 6px;
   background-repeat: no-repeat;
 }
 
-.toolbar select:hover {
-  border-color: #4c7dff;
+.editor-wrapper input[type="text"] {
+  position: absolute;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px dashed rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.6);
+  color: #000;
 }
 
-.toolbar select:focus {
-  border-color: #4c7dff;
-  box-shadow: 0 0 0 2px rgba(76, 125, 255, 0.25);
+@media (min-width: 768px) {
+  .toolbar-sheet {
+    position: absolute;
+    top: -90px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    background: rgba(40, 40, 40, 0.85);
+    backdrop-filter: blur(10px);
+
+    border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .sheet-handle {
+    display: none;
+  }
+
+  .toolbar.mobile {
+    padding: 10px 14px;
+    flex-wrap: nowrap;
+    background: none;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .editor-wrapper {
+    padding-bottom: 90px;
+    margin: 20px auto;
+  }
+
+  .toolbar-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    height: 80px;
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(14px);
+
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+
+    transition: height 0.25s ease;
+    overflow: hidden;
+  }
+
+  .toolbar-sheet.open {
+    height: 280px;
+  }
+
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: #777;
+    margin: 8px auto 10px;
+  }
+
+  .toolbar.mobile {
+    padding: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    overflow-y: auto;
+    max-height: calc(100% - 24px);
+  }
+
+  .tool-group {
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .toolbar button,
+  .file-btn {
+    height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .toolbar-sheet:not(.open) .tool-group:not(.primary) {
+    display: none;
+  }
 }

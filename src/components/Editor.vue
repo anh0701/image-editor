@@ -1,75 +1,86 @@
 <template>
   <div class="editor-wrapper">
+    <div
+      class="toolbar-sheet"
+      :class="{ open: sheetOpen }"
+    >
+      <div class="sheet-handle" @click="toggleSheet"></div>
+      <div class="toolbar mobile">
+        <div class="tool-group primary">
+          <label class="file-btn">
+            Open image
+            <input type="file" accept="image/*" @change="onOpenImage" hidden />
+          </label>
+        </div>
 
-    <div class="toolbar">
-      <div class="tool-group">
-        <label class="file-btn">
-          Open image
-          <input type="file" accept="image/*" @change="onOpenImage" hidden />
-        </label>
+        <div class="tool-group primary">
+          <!-- <button @click="setTool('select')"
+            :class="{ active: currentTool === 'select' }">Select</button> -->
+          <button @click="setTool('rect')"
+            :class="{ active: currentTool === 'rect' }">Rect</button>
+          <button @click="setTool('pen')"
+            :class="{ active: currentTool === 'pen' }">Pen</button>
+          <button @click="setTool('arrow')"
+            :class="{ active: currentTool === 'arrow' }">Arrow</button>
+        </div>
+
+        <div class="tool-group">
+          <input type="color" v-model="strokeColor" />
+          <input
+            type="range"
+            min="1"
+            max="10"
+            v-model.number="strokeWidth"
+          />
+          <span class="value value-chip">{{ strokeWidth }}</span>
+        </div>
+
+        <div class="tool-group">
+          <button @click="setTool('text')"
+            :class="{ active: currentTool === 'text' }">Text</button>
+          <input
+            type="number"
+            min="10"
+            max="72"
+            v-model.number="fontSize"
+          />
+        </div>
+
+        <div class="tool-group">
+          <button @click="undo">Undo</button>
+          <button @click="redo">Redo</button>
+          <button @click="clearCanvas">Clear</button>
+        </div>
+
+        <div class="tool-group">
+          <select v-model="exportBg">
+            <option value="white">White</option>
+            <option value="transparent">Transparent</option>
+          </select>
+
+          <button @click="saveImage">Save</button>
+          <button @click="copyImage">Copy</button>
+        </div>
+
+
       </div>
-
-      <div class="tool-group">
-        <!-- <button @click="setTool('select')"
-          :class="{ active: currentTool === 'select' }">Select</button> -->
-        <button @click="setTool('rect')"
-          :class="{ active: currentTool === 'rect' }">Rect</button>
-        <button @click="setTool('pen')"
-          :class="{ active: currentTool === 'pen' }">Pen</button>
-        <button @click="setTool('arrow')"
-          :class="{ active: currentTool === 'arrow' }">Arrow</button>
-      </div>
-
-      <div class="tool-group">
-        <input type="color" v-model="strokeColor" />
-        <input
-          type="range"
-          min="1"
-          max="10"
-          v-model.number="strokeWidth"
-        />
-        <span class="value value-chip">{{ strokeWidth }}</span>
-      </div>
-
-      <div class="tool-group">
-        <button @click="setTool('text')"
-          :class="{ active: currentTool === 'text' }">Text</button>
-        <input
-          type="number"
-          min="10"
-          max="72"
-          v-model.number="fontSize"
-        />
-      </div>
-
-      <div class="tool-group">
-        <button @click="undo">Undo</button>
-        <button @click="redo">Redo</button>
-        <button @click="clearCanvas">Clear</button>
-      </div>
-
-      <div class="tool-group">
-        <select v-model="exportBg">
-          <option value="white">White</option>
-          <option value="transparent">Transparent</option>
-        </select>
-
-        <button @click="saveImage">Save</button>
-        <button @click="copyImage">Copy</button>
-      </div>
-
-
     </div>
     <div>
       <canvas
-          ref="canvasRef"
-          width="1200"
-          height="700"
-          @mousedown="onDown"
-          @mousemove="onMove"
-          @mouseup="onUp"
-          style="border:1px solid #ccc; background: #fff;"
+        ref="canvasRef"
+        width="1200"
+        height="700"
+
+        @mousedown="onDown"
+        @mousemove="onMove"
+        @mouseup="onUp"
+
+        @touchstart.prevent="onTouchStart"
+        @touchmove.prevent="onTouchMove"
+        @touchend="onTouchEnd"
+        @touchcancel="onTouchEnd"
       />
+
   
       <input
           v-if="isTyping"
@@ -117,6 +128,92 @@ const strokeColor = ref('#ff0000')
 const strokeWidth = ref(2)
 const fontSize = ref(16)
 const exportBg = ref<'white' | 'transparent'>('white')
+const sheetOpen = ref(false)
+const isDrawing = ref(false)
+
+function toggleSheet() {
+  sheetOpen.value = !sheetOpen.value
+}
+
+function onTouchEnd() {
+  if (!isDrawing.value) return
+
+  onUp()
+  isDrawing.value = false
+  document.body.style.overflow = ""
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (!isDrawing.value) return
+
+  const pos = getTouchPos(e)
+  if (!pos) return
+
+  const { x, y } = pos
+
+  if (currentTool.value === 'pen') {
+    penTool.move(x, y)
+    renderPreview()
+  }
+
+  if (currentTool.value === 'arrow') {
+    arrowTool.move(x, y)
+    renderPreview()
+  }
+
+  if (currentTool.value === 'rect') {
+    rectTool.move(x, y)
+    renderPreview()
+  }
+}
+
+function onTouchStart(e: TouchEvent) {
+  if (e.touches.length !== 1) return
+
+  sheetOpen.value = false
+  isDrawing.value = true
+  document.body.style.overflow = "hidden"
+
+  const pos = getTouchPos(e)
+  if (!pos) return
+
+  const { x, y } = pos
+
+  if (currentTool.value === 'pen') {
+    penTool.start(x, y, strokeColor.value, strokeWidth.value)
+  }
+
+  if (currentTool.value === 'arrow') {
+    arrowTool.start(x, y, strokeColor.value, strokeWidth.value)
+  }
+
+  if (currentTool.value === 'rect') {
+    rectTool.start(x, y, strokeColor.value, strokeWidth.value)
+  }
+
+  if (currentTool.value === 'text') {
+    startText(x, y)
+  }
+}
+
+function getTouchPos(e: TouchEvent) {
+  const rect = canvasRef.value!.getBoundingClientRect()
+  const t =
+    e.touches.length > 0
+      ? e.touches[0]
+      : e.changedTouches.length > 0
+        ? e.changedTouches[0]
+        : null
+
+  if (!t) return null
+
+  return {
+    x: t.clientX - rect.left,
+    y: t.clientY - rect.top
+  }
+}
+
+
 
 const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
 
