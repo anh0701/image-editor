@@ -1,11 +1,14 @@
-import type { CanvasText } from '../types/Text'
-
 export function drawText(
   ctx: CanvasRenderingContext2D,
-  text: CanvasText
+  t: {
+    x: number
+    y: number
+    text: string
+    color: string
+    fontSize: number
+  }
 ) {
-  ctx.fillStyle = text.color
-  ctx.font = `${text.fontSize}px ${text.fontFamily ?? 'Arial'}`
-  ctx.textBaseline = 'top'
-  ctx.fillText(text.value, text.x, text.y)
+  ctx.fillStyle = t.color
+  ctx.font = `${t.fontSize}px sans-serif`
+  ctx.fillText(t.text, t.x, t.y)
 }

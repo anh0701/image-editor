@@ -1,4 +1,5 @@
 export interface Rect {
+  type: string
   x: number
   y: number
   width: number

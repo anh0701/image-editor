@@ -1,9 +1,9 @@
-export type CanvasText = {
+export interface TextShape {
   type: 'text'
   x: number
   y: number
-  value: string
+  text: string
   color: string
   fontSize: number
-  fontFamily?: string
+  // fontFamily?: string
 }
