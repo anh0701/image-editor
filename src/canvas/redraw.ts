@@ -10,8 +10,8 @@ export function redraw(ctx: CanvasRenderingContext2D, state: EditorState) {
 
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-  ctx.fillStyle = '#f5f5f5'
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  // ctx.fillStyle = '#f5f5f5'
+  // ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
   images.forEach(img => drawCanvasImage(ctx, img))
 

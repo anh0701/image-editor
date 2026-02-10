@@ -49,10 +49,15 @@
       </div>
 
       <div class="tool-group">
+        <select v-model="exportBg">
+          <option value="white">White</option>
+          <option value="transparent">Transparent</option>
+        </select>
+
         <button @click="saveImage">Save</button>
         <button @click="copyImage">Copy</button>
-
       </div>
+
 
     </div>
     <div>
@@ -63,7 +68,7 @@
           @mousedown="onDown"
           @mousemove="onMove"
           @mouseup="onUp"
-          style="border:1px solid #ccc"
+          style="border:1px solid #ccc; background: #fff;"
       />
   
       <input
@@ -100,9 +105,9 @@ import { useArrowTool } from '../tools/useArrowTool'
 import { useRectTool } from '../tools/useRectTool'
 import { useTextTool } from '../tools/useTextTool'
 import type { CanvasImage } from '../types/CanvasImage'
-import { imageCache } from '../state/imageCache.ts'
+import { imageCache } from '../types/imageCache.ts.ts'
 import type { EditorState } from '../types/EditorState.ts'
-import { computeBounds } from '../utils/computeBounds.ts'
+import { exportImage } from '../tools/exportImage.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -111,6 +116,7 @@ const currentTool = ref<'pen' | 'rect' | 'arrow' | 'text'>('pen')
 const strokeColor = ref('#ff0000')
 const strokeWidth = ref(2)
 const fontSize = ref(16)
+const exportBg = ref<'white' | 'transparent'>('white')
 
 const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
 
@@ -368,36 +374,12 @@ function rehydrateImages(stateImages: CanvasImage[]) {
 }
 
 function saveImage() {
-  const bounds = computeBounds(images, rects, arrows, penStrokes, texts)
-  if (!bounds) return
+  const canvas = exportImage({ background: exportBg.value }, images, rects, 
+    arrows, penStrokes, texts, canvasRef.value!)
+  if (!canvas) return
 
-  const w = bounds.maxX - bounds.minX 
-  const h = bounds.maxY - bounds.minY
-
-  const outCanvas = document.createElement('canvas')
-  outCanvas.width = Math.ceil(w)
-  outCanvas.height = Math.ceil(h)
-
-  const outCtx = outCanvas.getContext('2d')!
-
-  outCtx.translate(
-    -bounds.minX ,
-    -bounds.minY
-  )
-
-  // render lại toàn bộ state
-  const outRenderer = useCanvas(outCtx)
-  outRenderer.render({
-    images,
-    rects,
-    penStrokes,
-    arrows,
-    texts
-  })
-
-  outCanvas.toBlob(blob => {
+  canvas.toBlob(blob => {
     if (!blob) return
-
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -407,25 +389,22 @@ function saveImage() {
   }, 'image/png')
 }
 
+
 async function copyImage() {
-  const canvas = canvasRef.value
+  const canvas = exportImage({ background: exportBg.value }, images, rects,
+    arrows, penStrokes, texts, canvasRef.value! )
   if (!canvas) return
 
-  canvas.toBlob(async blob => {
-    if (!blob) return
+  const blob = await new Promise<Blob | null>(r =>
+    canvas.toBlob(r, 'image/png')
+  )
+  if (!blob) return
 
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': blob
-        })
-      ])
-      console.log('Image copied to clipboard')
-    } catch (err) {
-      console.error('Copy failed', err)
-    }
-  })
+  await navigator.clipboard.write([
+    new ClipboardItem({ 'image/png': blob })
+  ])
 }
+
 
 function onPaste(e: ClipboardEvent) {
   const items = e.clipboardData?.items

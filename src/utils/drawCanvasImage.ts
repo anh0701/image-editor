@@ -1,5 +1,5 @@
 
-import { imageCache } from "../state/imageCache.ts"
+import { imageCache } from "../types/imageCache.ts.ts"
 import type { CanvasImage } from "../types/CanvasImage"
 
 export function drawCanvasImage(
@@ -11,7 +11,7 @@ export function drawCanvasImage(
   if (!el) {
     el = imageCache.get(image.src)
     if (el) {
-      image.element = el 
+      image.element = el
     }
   }
 
