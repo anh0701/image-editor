@@ -67,14 +67,20 @@
     </div>
     <div>
       <canvas
-          ref="canvasRef"
-          width="1200"
-          height="700"
-          @mousedown="onDown"
-          @mousemove="onMove"
-          @mouseup="onUp"
-          style="border:1px solid #ccc; background: #fff;"
+        ref="canvasRef"
+        width="1200"
+        height="700"
+
+        @mousedown="onDown"
+        @mousemove="onMove"
+        @mouseup="onUp"
+
+        @touchstart.prevent="onTouchStart"
+        @touchmove.prevent="onTouchMove"
+        @touchend="onTouchEnd"
+        @touchcancel="onTouchEnd"
       />
+
   
       <input
           v-if="isTyping"
@@ -123,10 +129,91 @@ const strokeWidth = ref(2)
 const fontSize = ref(16)
 const exportBg = ref<'white' | 'transparent'>('white')
 const sheetOpen = ref(false)
+const isDrawing = ref(false)
 
 function toggleSheet() {
   sheetOpen.value = !sheetOpen.value
 }
+
+function onTouchEnd() {
+  if (!isDrawing.value) return
+
+  onUp()
+  isDrawing.value = false
+  document.body.style.overflow = ""
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (!isDrawing.value) return
+
+  const pos = getTouchPos(e)
+  if (!pos) return
+
+  const { x, y } = pos
+
+  if (currentTool.value === 'pen') {
+    penTool.move(x, y)
+    renderPreview()
+  }
+
+  if (currentTool.value === 'arrow') {
+    arrowTool.move(x, y)
+    renderPreview()
+  }
+
+  if (currentTool.value === 'rect') {
+    rectTool.move(x, y)
+    renderPreview()
+  }
+}
+
+function onTouchStart(e: TouchEvent) {
+  if (e.touches.length !== 1) return
+
+  sheetOpen.value = false
+  isDrawing.value = true
+  document.body.style.overflow = "hidden"
+
+  const pos = getTouchPos(e)
+  if (!pos) return
+
+  const { x, y } = pos
+
+  if (currentTool.value === 'pen') {
+    penTool.start(x, y, strokeColor.value, strokeWidth.value)
+  }
+
+  if (currentTool.value === 'arrow') {
+    arrowTool.start(x, y, strokeColor.value, strokeWidth.value)
+  }
+
+  if (currentTool.value === 'rect') {
+    rectTool.start(x, y, strokeColor.value, strokeWidth.value)
+  }
+
+  if (currentTool.value === 'text') {
+    startText(x, y)
+  }
+}
+
+function getTouchPos(e: TouchEvent) {
+  const rect = canvasRef.value!.getBoundingClientRect()
+  const t =
+    e.touches.length > 0
+      ? e.touches[0]
+      : e.changedTouches.length > 0
+        ? e.changedTouches[0]
+        : null
+
+  if (!t) return null
+
+  return {
+    x: t.clientX - rect.left,
+    y: t.clientY - rect.top
+  }
+}
+
+
 
 const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
 
