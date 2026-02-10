@@ -48,6 +48,12 @@
         <button @click="clearCanvas">Clear</button>
       </div>
 
+      <div class="tool-group">
+        <button @click="saveImage">Save</button>
+        <button @click="copyImage">Copy</button>
+
+      </div>
+
     </div>
     <div>
       <canvas
@@ -96,6 +102,7 @@ import { useTextTool } from '../tools/useTextTool'
 import type { CanvasImage } from '../types/CanvasImage'
 import { imageCache } from '../state/imageCache.ts'
 import type { EditorState } from '../types/EditorState.ts'
+import { computeBounds } from '../utils/computeBounds.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -307,6 +314,8 @@ onMounted(() => {
   canvas = useCanvas(ctx)
   history.reset()
   render()
+
+  window.addEventListener('paste', onPaste)
 })
 
 function onOpenImage(e: Event) {
@@ -357,6 +366,115 @@ function rehydrateImages(stateImages: CanvasImage[]) {
     }
   })
 }
+
+function saveImage() {
+  const bounds = computeBounds(images, rects, arrows, penStrokes, texts)
+  if (!bounds) return
+
+  const w = bounds.maxX - bounds.minX 
+  const h = bounds.maxY - bounds.minY
+
+  const outCanvas = document.createElement('canvas')
+  outCanvas.width = Math.ceil(w)
+  outCanvas.height = Math.ceil(h)
+
+  const outCtx = outCanvas.getContext('2d')!
+
+  outCtx.translate(
+    -bounds.minX ,
+    -bounds.minY
+  )
+
+  // render lại toàn bộ state
+  const outRenderer = useCanvas(outCtx)
+  outRenderer.render({
+    images,
+    rects,
+    penStrokes,
+    arrows,
+    texts
+  })
+
+  outCanvas.toBlob(blob => {
+    if (!blob) return
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'edited.png'
+    a.click()
+    URL.revokeObjectURL(url)
+  }, 'image/png')
+}
+
+async function copyImage() {
+  const canvas = canvasRef.value
+  if (!canvas) return
+
+  canvas.toBlob(async blob => {
+    if (!blob) return
+
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob
+        })
+      ])
+      console.log('Image copied to clipboard')
+    } catch (err) {
+      console.error('Copy failed', err)
+    }
+  })
+}
+
+function onPaste(e: ClipboardEvent) {
+  const items = e.clipboardData?.items
+  if (!items) return
+
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const blob = item.getAsFile()
+      if (!blob) continue
+
+      const img = new Image()
+      const url = URL.createObjectURL(blob)
+
+      img.onload = () => {
+        imageCache.set(url, img)
+
+        const canvasW = ctx.canvas.width
+        const canvasH = ctx.canvas.height
+
+        const scale = Math.min(
+          canvasW / img.width,
+          canvasH / img.height,
+          1
+        )
+
+        const w = img.width * scale
+        const h = img.height * scale
+
+        images.push({
+          type: 'image',
+          src: url,
+          element: img,
+          x: (canvasW - w) / 2,
+          y: (canvasH - h) / 2,
+          w,
+          h
+        })
+
+        history.push()
+        render()
+      }
+
+      img.src = url
+      e.preventDefault()
+      break
+    }
+  }
+}
+
 
 </script>
 
