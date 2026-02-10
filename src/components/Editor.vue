@@ -197,21 +197,25 @@ function onTouchStart(e: TouchEvent) {
 }
 
 function getTouchPos(e: TouchEvent) {
-  const rect = canvasRef.value!.getBoundingClientRect()
+  const canvas = canvasRef.value!
+  const rect = canvas.getBoundingClientRect()
+
   const t =
     e.touches.length > 0
       ? e.touches[0]
-      : e.changedTouches.length > 0
-        ? e.changedTouches[0]
-        : null
+      : e.changedTouches[0]
 
   if (!t) return null
 
+  const scaleX = canvas.width / rect.width
+  const scaleY = canvas.height / rect.height
+
   return {
-    x: t.clientX - rect.left,
-    y: t.clientY - rect.top
+    x: (t.clientX - rect.left) * scaleX,
+    y: (t.clientY - rect.top) * scaleY
   }
 }
+
 
 
 
@@ -254,10 +258,15 @@ function render() {
 }
 
 function getPos(e: MouseEvent) {
-  const rect = canvasRef.value!.getBoundingClientRect()
+  const canvas = canvasRef.value!
+  const rect = canvas.getBoundingClientRect()
+
+  const scaleX = canvas.width / rect.width
+  const scaleY = canvas.height / rect.height
+
   return {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
   }
 }
 
