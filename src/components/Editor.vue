@@ -32,7 +32,8 @@
       </div>
 
       <div class="tool-group">
-        <button @click="setTool('text')">Text</button>
+        <button @click="setTool('text')"
+          :class="{ active: currentTool === 'text' }">Text</button>
         <input
           type="number"
           min="10"
@@ -62,6 +63,7 @@
       <input
           v-if="isTyping"
           v-model="textValue"
+          @mousedown.stop
           :style="{
           position: 'absolute',
           left: textX + 'px',
@@ -91,6 +93,9 @@ import { usePenTool } from '../tools/usePenTool'
 import { useArrowTool } from '../tools/useArrowTool'
 import { useRectTool } from '../tools/useRectTool'
 import { useTextTool } from '../tools/useTextTool'
+import type { CanvasImage } from '../types/CanvasImage'
+import { imageCache } from '../state/imageCache.ts'
+import type { EditorState } from '../types/EditorState.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -102,9 +107,16 @@ const fontSize = ref(16)
 
 const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
 
-function snapshot() {
+function snapshot() : EditorState{
   return {
-    images: structuredClone(images),
+    images: images.map(img => ({
+      type: 'image',
+      src: img.src,
+      x: img.x,
+      y: img.y,
+      w: img.w,
+      h: img.h
+    })),
     rects: structuredClone(rects),
     penStrokes: structuredClone(penStrokes),
     arrows: structuredClone(arrows),
@@ -122,7 +134,13 @@ const textTool = useTextTool()
 let canvas: ReturnType<typeof useCanvas>
 
 function render() {
-  canvas.render(snapshot())
+  canvas.render({
+    images,
+    rects,
+    penStrokes,
+    arrows,
+    texts
+  })
 }
 
 function getPos(e: MouseEvent) {
@@ -134,6 +152,7 @@ function getPos(e: MouseEvent) {
 }
 
 function onDown(e: MouseEvent) {
+  if (isTyping.value) return
   const { x, y } = getPos(e)
 
   if (currentTool.value === 'pen') {
@@ -212,6 +231,8 @@ const textX = ref(0)
 const textY = ref(0)
 
 function startText(x: number, y: number) {
+  render()
+
   isTyping.value = true
   textValue.value = ''
   textX.value = x
@@ -253,6 +274,8 @@ function setTool(tool: typeof currentTool.value) {
 
 function undo() {
   history.undo(state => {
+    rehydrateImages(state.images)
+    images.splice(0, images.length, ...state.images)
     rects.splice(0, rects.length, ...state.rects)
     arrows.splice(0, arrows.length, ...state.arrows)
     penStrokes.splice(0, penStrokes.length, ...state.penStrokes)
@@ -263,6 +286,8 @@ function undo() {
 
 function redo() {
   history.redo(state => {
+    rehydrateImages(state.images)
+    images.splice(0, images.length, ...state.images)
     rects.splice(0, rects.length, ...state.rects)
     arrows.splice(0, arrows.length, ...state.arrows)
     penStrokes.splice(0, penStrokes.length, ...state.penStrokes)
@@ -287,16 +312,32 @@ onMounted(() => {
 function onOpenImage(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
-
+  
   const img = new Image()
+  
   img.onload = () => {
+    imageCache.set(img.src, img)
+    const canvasW = ctx.canvas.width
+    const canvasH = ctx.canvas.height
+
+    const scale = Math.min(
+      canvasW / img.width,
+      canvasH / img.height,
+      1
+    )
+
+    const w = img.width * scale
+    const h = img.height * scale
+
+    images.splice(0)
     images.push({
       type: 'image',
       src: img.src,
-      x: 0,
-      y: 0,
-      w: img.width,
-      h: img.height
+      element: img, //  cache 
+      x: (canvasW - w) / 2,
+      y: (canvasH - h) / 2,
+      w,
+      h
     })
 
     history.push()
@@ -304,6 +345,17 @@ function onOpenImage(e: Event) {
   }
 
   img.src = URL.createObjectURL(file)
+}
+
+function rehydrateImages(stateImages: CanvasImage[]) {
+  stateImages.forEach(img => {
+    if (!img.element) {
+      const cached = imageCache.get(img.src)
+      if (cached) {
+        img.element = cached
+      }
+    }
+  })
 }
 
 </script>

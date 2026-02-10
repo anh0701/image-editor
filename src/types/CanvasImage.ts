@@ -5,4 +5,5 @@ export interface CanvasImage {
   y: number
   w: number
   h: number
+  element?: HTMLImageElement
 }
