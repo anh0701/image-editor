@@ -341,8 +341,8 @@ function onOpenImage(e: Event) {
       1
     )
 
-    const w = img.width * scale
-    const h = img.height * scale
+    const w = Math.round(img.width * scale)
+    const h = Math.round(img.height * scale)
 
     images.splice(0)
     images.push({
@@ -430,8 +430,8 @@ function onPaste(e: ClipboardEvent) {
           1
         )
 
-        const w = img.width * scale
-        const h = img.height * scale
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
 
         images.push({
           type: 'image',

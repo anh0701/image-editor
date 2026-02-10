@@ -6,4 +6,5 @@ export interface TextShape {
   color: string
   fontSize: number
   // fontFamily?: string
+  textAlign?: string
 }
