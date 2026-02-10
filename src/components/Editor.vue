@@ -119,6 +119,8 @@ import type { CanvasImage } from '../types/CanvasImage'
 import { imageCache } from '../types/imageCache.ts.ts'
 import type { EditorState } from '../types/EditorState.ts'
 import { exportImage } from '../tools/exportImage.ts'
+import { getTouchPos } from '../utils/getTouchPos.ts'
+import { generateImageFileNameWithMs } from '../state/generateImageFileNameWithMs.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -146,7 +148,7 @@ function onTouchEnd() {
 function onTouchMove(e: TouchEvent) {
   if (!isDrawing.value) return
 
-  const pos = getTouchPos(e)
+  const pos = getTouchPos(e, canvasRef)
   if (!pos) return
 
   const { x, y } = pos
@@ -174,7 +176,7 @@ function onTouchStart(e: TouchEvent) {
   isDrawing.value = true
   document.body.style.overflow = "hidden"
 
-  const pos = getTouchPos(e)
+  const pos = getTouchPos(e, canvasRef)
   if (!pos) return
 
   const { x, y } = pos
@@ -195,25 +197,6 @@ function onTouchStart(e: TouchEvent) {
     startText(x, y)
   }
 }
-
-function getTouchPos(e: TouchEvent) {
-  const rect = canvasRef.value!.getBoundingClientRect()
-  const t =
-    e.touches.length > 0
-      ? e.touches[0]
-      : e.changedTouches.length > 0
-        ? e.changedTouches[0]
-        : null
-
-  if (!t) return null
-
-  return {
-    x: t.clientX - rect.left,
-    y: t.clientY - rect.top
-  }
-}
-
-
 
 const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
 
@@ -254,10 +237,15 @@ function render() {
 }
 
 function getPos(e: MouseEvent) {
-  const rect = canvasRef.value!.getBoundingClientRect()
+  const canvas = canvasRef.value!
+  const rect = canvas.getBoundingClientRect()
+
+  const scaleX = canvas.width / rect.width
+  const scaleY = canvas.height / rect.height
+
   return {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
   }
 }
 
@@ -480,7 +468,7 @@ function saveImage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'edited.png'
+    a.download = generateImageFileNameWithMs()
     a.click()
     URL.revokeObjectURL(url)
   }, 'image/png')
