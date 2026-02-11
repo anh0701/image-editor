@@ -59,11 +59,9 @@
             <option value="white">White</option>
             <option value="transparent">Transparent</option>
           </select>
-
           <button @click="saveImage">Save</button>
           <button @click="copyImage">Copy</button>
         </div>
-
 
       </div>
     </div>
@@ -76,7 +74,6 @@
         @pointermove="pointer.onPointerMove"
         @pointerup="pointer.onPointerUp"
       />
-
   
       <input
           v-if="isTyping"
@@ -111,11 +108,10 @@ import { useArrowTool } from '../tools/useArrowTool'
 import { useRectTool } from '../tools/useRectTool'
 import { useTextTool } from '../tools/useTextTool'
 import type { EditorState } from '../types/EditorState.ts'
-import { exportImage } from '../tools/exportImage.ts'
-import { generateImageFileNameWithMs } from '../state/generateImageFileNameWithMs.ts'
 import { usePointerController } from '../state/usePointerController.ts'
 import type { ShapeMap } from '../types/ShapeMap.ts'
 import { useImageManager } from '../state/useImageManager.ts'
+import { useExporter } from '../state/useExporter.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -143,6 +139,7 @@ const textTool = useTextTool()
 
 let canvas: ReturnType<typeof useCanvas>
 let imageManager: ReturnType<typeof useImageManager>
+let exporter: ReturnType<typeof useExporter>
 
 function render() {
   canvas.render({
@@ -161,7 +158,6 @@ const addShapeMap: {
   rect: shape => rects.push(shape),
   arrow: shape => arrows.push(shape)
 }
-
 
 const toolMap = {
   pen: penTool,
@@ -187,6 +183,15 @@ const pointer = usePointerController<ShapeMap>({
   onStartText: startText
 })
 
+function getCurrentState(): EditorState {
+  return {
+    images,
+    rects,
+    arrows,
+    penStrokes,
+    texts
+  }
+}
 
 function toggleSheet() {
   sheetOpen.value = !sheetOpen.value
@@ -315,6 +320,7 @@ onMounted(() => {
   ctx = canvasRef.value!.getContext('2d')!
   canvas = useCanvas(ctx)
   imageManager = useImageManager(ctx)
+  exporter = useExporter(canvasRef)
 
   history.reset()
   render()
@@ -336,37 +342,18 @@ async function onOpenImage(e: Event) {
 }
 
 function saveImage() {
-  const canvas = exportImage({ background: exportBg.value }, images, rects, 
-    arrows, penStrokes, texts, canvasRef.value!)
-  if (!canvas) return
-
-  canvas.toBlob(blob => {
-    if (!blob) return
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = generateImageFileNameWithMs()
-    a.click()
-    URL.revokeObjectURL(url)
-  }, 'image/png')
-}
-
-
-async function copyImage() {
-  const canvas = exportImage({ background: exportBg.value }, images, rects,
-    arrows, penStrokes, texts, canvasRef.value! )
-  if (!canvas) return
-
-  const blob = await new Promise<Blob | null>(r =>
-    canvas.toBlob(r, 'image/png')
+  exporter.save(
+    { background: exportBg.value },
+    getCurrentState()
   )
-  if (!blob) return
-
-  await navigator.clipboard.write([
-    new ClipboardItem({ 'image/png': blob })
-  ])
 }
 
+function copyImage() {
+  exporter.copy(
+    { background: exportBg.value },
+    getCurrentState()
+  )
+}
 
 async function onPaste(e: ClipboardEvent) {
   console.log("paste triggered")
@@ -374,16 +361,13 @@ async function onPaste(e: ClipboardEvent) {
   if (!items) return
 
   for (const item of items) {
-    console.log("item type:", item.type)
     if (item.type.startsWith('image/')) {
-      console.log("image detected")
       const blob = item.getAsFile()
       if (!blob) continue
 
       const image = await imageManager.fromBlob(blob)
 
       images.push(image)
-
       history.push()
       render()
 
@@ -394,7 +378,6 @@ async function onPaste(e: ClipboardEvent) {
 }
 
 </script>
-
 
 <style src="./Editor.css" scoped></style>
 
