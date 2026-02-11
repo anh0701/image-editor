@@ -1,18 +1,19 @@
 import type { Rect } from "../types/Rect"
+import type { StartOptions } from "../types/StartOptions"
 
 
 export function useRectTool() {
   let temp: Rect | null = null
 
-  function start(x: number, y: number, color: string, width: number) {
+  function start(x: number, y: number, options: StartOptions) {
     temp = {
       type: 'rect',
       x,
       y,
       width: 0,
       height: 0,
-      color,
-      lineWidth: width
+      color: options.color,
+      lineWidth: options.width
     }
   }
 
