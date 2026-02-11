@@ -1,15 +1,16 @@
 import type { PenStroke } from "../types/PenStroke"
+import type { StartOptions } from "../types/StartOptions"
 
 
 export function usePenTool() {
   let temp: PenStroke | null = null
 
-  function start(x: number, y: number, color: string, width: number) {
+  function start(x: number, y: number, options: StartOptions) {
     temp = {
       type: 'pen',
       points: [{ x, y }],
-      color,
-      lineWidth: width
+      color: options.color,
+      lineWidth: options.width
     }
   }
 

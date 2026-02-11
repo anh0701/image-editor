@@ -73,14 +73,9 @@
         width="1200"
         height="700"
 
-        @mousedown="onDown"
-        @mousemove="onMove"
-        @mouseup="onUp"
-
-        @touchstart="onTouchStart"
-        @touchmove.prevent="onTouchMove"
-        @touchend="onTouchEnd"
-        @touchcancel="onTouchEnd"
+        @pointerdown="pointer.onPointerDown"
+        @pointermove="pointer.onPointerMove"
+        @pointerup="pointer.onPointerUp"
       />
 
   
@@ -122,8 +117,9 @@ import type { CanvasImage } from '../types/CanvasImage'
 import { imageCache } from '../types/imageCache.ts.ts'
 import type { EditorState } from '../types/EditorState.ts'
 import { exportImage } from '../tools/exportImage.ts'
-import { getTouchPos } from '../utils/getTouchPos.ts'
 import { generateImageFileNameWithMs } from '../state/generateImageFileNameWithMs.ts'
+import { usePointerController } from '../state/usePointerController.ts'
+import type { ShapeMap } from '../types/ShapeMap.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -134,109 +130,15 @@ const strokeWidth = ref(2)
 const fontSize = ref(16)
 const exportBg = ref<'white' | 'transparent'>('white')
 const sheetOpen = ref(false)
-const isDrawing = ref(false)
 const inputRef = ref<HTMLInputElement | null>(null)
-
 const canvasTextX = ref(0)
 const canvasTextY = ref(0)
-
-
-// mobile web
-
-function toggleSheet() {
-  sheetOpen.value = !sheetOpen.value
-}
-
-function onTouchEnd() {
-  if (!isDrawing.value) return
-
-  onUp()
-  isDrawing.value = false
-  document.body.style.overflow = ""
-}
-
-function onTouchMove(e: TouchEvent) {
-  if (!isDrawing.value) return
-
-  const pos = getTouchPos(e, canvasRef)
-  if (!pos) return
-
-  const { x, y } = pos
-
-  if (currentTool.value === 'pen') {
-    penTool.move(x, y)
-    renderPreview()
-  }
-
-  if (currentTool.value === 'arrow') {
-    arrowTool.move(x, y)
-    renderPreview()
-  }
-
-  if (currentTool.value === 'rect') {
-    rectTool.move(x, y)
-    renderPreview()
-  }
-}
-
-function onTouchStart(e: TouchEvent) {
-
-  if (currentTool.value === 'text') {
-    const pos = getTouchPos(e, canvasRef)
-    if (!pos) return
-    startText(pos.x, pos.y)
-    return
-  }
-
-  e.preventDefault()
-
-  if (e.touches.length !== 1) return
-
-  sheetOpen.value = false
-  isDrawing.value = true
-  document.body.style.overflow = "hidden"
-
-  const pos = getTouchPos(e, canvasRef)
-  if (!pos) return
-
-  const { x, y } = pos
-
-  if (currentTool.value === 'pen') {
-    penTool.start(x, y, strokeColor.value, strokeWidth.value)
-  }
-
-  if (currentTool.value === 'arrow') {
-    arrowTool.start(x, y, strokeColor.value, strokeWidth.value)
-  }
-
-  if (currentTool.value === 'rect') {
-    rectTool.start(x, y, strokeColor.value, strokeWidth.value)
-  }
-
-}
-
-// common using
-
-const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
-
-function snapshot() : EditorState{
-  return {
-    images: images.map(img => ({
-      type: 'image',
-      src: img.src,
-      x: img.x,
-      y: img.y,
-      w: img.w,
-      h: img.h
-    })),
-    rects: structuredClone(rects),
-    penStrokes: structuredClone(penStrokes),
-    arrows: structuredClone(arrows),
-    texts: structuredClone(texts)
-  }
-}
-
+const isTyping = ref(false)
+const textValue = ref('')
+const textX = ref(0)
+const textY = ref(0)
 const history = useHistory(snapshot)
+const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
 
 const penTool = usePenTool()
 const arrowTool = useArrowTool()
@@ -255,80 +157,63 @@ function render() {
   })
 }
 
-function getPos(e: MouseEvent) {
-  const canvas = canvasRef.value!
-  const rect = canvas.getBoundingClientRect()
+const addShapeMap: {
+  [K in keyof ShapeMap]: (shape: ShapeMap[K]) => void
+} = {
+  pen: shape => penStrokes.push(shape),
+  rect: shape => rects.push(shape),
+  arrow: shape => arrows.push(shape)
+}
 
-  const scaleX = canvas.width / rect.width
-  const scaleY = canvas.height / rect.height
 
+const toolMap = {
+  pen: penTool,
+  rect: rectTool,
+  arrow: arrowTool
+}
+
+const pointer = usePointerController<ShapeMap>({
+  canvasRef,
+  currentTool,
+  strokeColor,
+  strokeWidth,
+  isTyping,
+  toolMap,
+
+  onAddShape(tool, shape) {
+    addShapeMap[tool](shape)
+  },
+
+  onRenderPreview: renderPreview,
+  onRender: render,
+  onHistoryPush: () => history.push(),
+  onStartText: startText
+})
+
+
+
+// mobile web
+
+function toggleSheet() {
+  sheetOpen.value = !sheetOpen.value
+}
+
+// common using
+
+function snapshot() : EditorState{
   return {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY
-  }
-}
-
-function onDown(e: MouseEvent) {
-  if (isTyping.value) return
-  const { x, y } = getPos(e)
-
-  if (currentTool.value === 'pen') {
-    penTool.start(x, y, strokeColor.value, strokeWidth.value)
-  }
-
-  if (currentTool.value === 'arrow') {
-    arrowTool.start(x, y, strokeColor.value, strokeWidth.value)
-  }
-
-  if (currentTool.value === 'rect') {
-    rectTool.start(x, y, strokeColor.value, strokeWidth.value)
-  }
-
-  if (currentTool.value === 'text') {
-    startText(x, y)
-  }
-}
-
-function onMove(e: MouseEvent) {
-  const { x, y } = getPos(e)
-
-  if (currentTool.value === 'pen') {
-    penTool.move(x, y)
-    renderPreview()
-  }
-
-  if (currentTool.value === 'arrow') {
-    arrowTool.move(x, y)
-    renderPreview()
-  }
-
-  if (currentTool.value === 'rect') {
-    rectTool.move(x, y)
-    renderPreview()
-  }
-}
-
-function onUp() {
-  let done
-
-  if (currentTool.value === 'pen') {
-    done = penTool.end()
-    if (done) penStrokes.push(done)
-  }
-
-  if (currentTool.value === 'arrow') {
-    done = arrowTool.end()
-    if (done) arrows.push(done)
-  }
-
-  if (currentTool.value === 'rect') {
-    done = rectTool.end()
-    if (done) rects.push(done)
-  }
-
-  if (done) {
-    history.push()
-    render()
+    images: images.map(img => ({
+      type: 'image',
+      src: img.src,
+      x: img.x,
+      y: img.y,
+      w: img.w,
+      h: img.h
+    })),
+    rects: structuredClone(rects),
+    penStrokes: structuredClone(penStrokes),
+    arrows: structuredClone(arrows),
+    texts: structuredClone(texts)
   }
 }
 
@@ -341,11 +226,6 @@ function renderPreview() {
     texts
   })
 }
-
-const isTyping = ref(false)
-const textValue = ref('')
-const textX = ref(0)
-const textY = ref(0)
 
 function startText(x: number, y: number) {
   console.log(document.activeElement)

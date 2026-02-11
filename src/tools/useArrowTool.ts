@@ -1,18 +1,19 @@
 import type { Arrow } from "../types/Arrow"
+import type { StartOptions } from "../types/StartOptions"
 
 
 export function useArrowTool() {
   let temp: Arrow | null = null
 
-  function start(x: number, y: number, color: string, width: number) {
+  function start(x: number, y: number, options: StartOptions) {
     temp = {
       type: 'arrow',
       startX: x,
       startY: y,
       endX: x,
       endY: y,
-      color,
-      lineWidth: width
+      color: options.color,
+      lineWidth: options.width
     }
   }
 
