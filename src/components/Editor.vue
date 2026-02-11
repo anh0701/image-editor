@@ -72,7 +72,6 @@
         ref="canvasRef"
         width="1200"
         height="700"
-
         @pointerdown="pointer.onPointerDown"
         @pointermove="pointer.onPointerMove"
         @pointerup="pointer.onPointerUp"
@@ -104,22 +103,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-
 import { useEditorState } from '../state/useEditorState'
 import { useHistory } from '../state/useHistory'
 import { useCanvas } from '../canvas/useCanvas'
-
 import { usePenTool } from '../tools/usePenTool'
 import { useArrowTool } from '../tools/useArrowTool'
 import { useRectTool } from '../tools/useRectTool'
 import { useTextTool } from '../tools/useTextTool'
-import type { CanvasImage } from '../types/CanvasImage'
-import { imageCache } from '../types/imageCache.ts.ts'
 import type { EditorState } from '../types/EditorState.ts'
 import { exportImage } from '../tools/exportImage.ts'
 import { generateImageFileNameWithMs } from '../state/generateImageFileNameWithMs.ts'
 import { usePointerController } from '../state/usePointerController.ts'
 import type { ShapeMap } from '../types/ShapeMap.ts'
+import { useImageManager } from '../state/useImageManager.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -146,6 +142,7 @@ const rectTool = useRectTool()
 const textTool = useTextTool()
 
 let canvas: ReturnType<typeof useCanvas>
+let imageManager: ReturnType<typeof useImageManager>
 
 function render() {
   canvas.render({
@@ -191,14 +188,9 @@ const pointer = usePointerController<ShapeMap>({
 })
 
 
-
-// mobile web
-
 function toggleSheet() {
   sheetOpen.value = !sheetOpen.value
 }
-
-// common using
 
 function snapshot() : EditorState{
   return {
@@ -291,7 +283,7 @@ function setTool(tool: typeof currentTool.value) {
 
 function undo() {
   history.undo(state => {
-    rehydrateImages(state.images)
+    imageManager.rehydrate(state.images)
     images.splice(0, images.length, ...state.images)
     rects.splice(0, rects.length, ...state.rects)
     arrows.splice(0, arrows.length, ...state.arrows)
@@ -303,7 +295,7 @@ function undo() {
 
 function redo() {
   history.redo(state => {
-    rehydrateImages(state.images)
+    imageManager.rehydrate(state.images)
     images.splice(0, images.length, ...state.images)
     rects.splice(0, rects.length, ...state.rects)
     arrows.splice(0, arrows.length, ...state.arrows)
@@ -322,59 +314,25 @@ function clearCanvas() {
 onMounted(() => {
   ctx = canvasRef.value!.getContext('2d')!
   canvas = useCanvas(ctx)
+  imageManager = useImageManager(ctx)
+
   history.reset()
   render()
 
   window.addEventListener('paste', onPaste)
 })
 
-function onOpenImage(e: Event) {
+async function onOpenImage(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
-  
-  const img = new Image()
-  
-  img.onload = () => {
-    imageCache.set(img.src, img)
-    const canvasW = ctx.canvas.width
-    const canvasH = ctx.canvas.height
 
-    const scale = Math.min(
-      canvasW / img.width,
-      canvasH / img.height,
-      1
-    )
+  const image = await imageManager.fromFile(file)
 
-    const w = Math.round(img.width * scale)
-    const h = Math.round(img.height * scale)
+  images.splice(0)
+  images.push(image)
 
-    images.splice(0)
-    images.push({
-      type: 'image',
-      src: img.src,
-      element: img, //  cache 
-      x: (canvasW - w) / 2,
-      y: (canvasH - h) / 2,
-      w,
-      h
-    })
-
-    history.push()
-    render()
-  }
-
-  img.src = URL.createObjectURL(file)
-}
-
-function rehydrateImages(stateImages: CanvasImage[]) {
-  stateImages.forEach(img => {
-    if (!img.element) {
-      const cached = imageCache.get(img.src)
-      if (cached) {
-        img.element = cached
-      }
-    }
-  })
+  history.push()
+  render()
 }
 
 function saveImage() {
@@ -410,54 +368,30 @@ async function copyImage() {
 }
 
 
-function onPaste(e: ClipboardEvent) {
+async function onPaste(e: ClipboardEvent) {
+  console.log("paste triggered")
   const items = e.clipboardData?.items
   if (!items) return
 
   for (const item of items) {
+    console.log("item type:", item.type)
     if (item.type.startsWith('image/')) {
+      console.log("image detected")
       const blob = item.getAsFile()
       if (!blob) continue
 
-      const img = new Image()
-      const url = URL.createObjectURL(blob)
+      const image = await imageManager.fromBlob(blob)
 
-      img.onload = () => {
-        imageCache.set(url, img)
+      images.push(image)
 
-        const canvasW = ctx.canvas.width
-        const canvasH = ctx.canvas.height
+      history.push()
+      render()
 
-        const scale = Math.min(
-          canvasW / img.width,
-          canvasH / img.height,
-          1
-        )
-
-        const w = Math.round(img.width * scale)
-        const h = Math.round(img.height * scale)
-
-        images.push({
-          type: 'image',
-          src: url,
-          element: img,
-          x: (canvasW - w) / 2,
-          y: (canvasH - h) / 2,
-          w,
-          h
-        })
-
-        history.push()
-        render()
-      }
-
-      img.src = url
       e.preventDefault()
       break
     }
   }
 }
-
 
 </script>
 
