@@ -55,11 +55,24 @@
         </div>
 
         <div class="tool-group">
-          <select v-model="exportBg">
-            <option value="white">White</option>
-            <option value="transparent">Transparent</option>
-          </select>
-          <button @click="saveImage">Save</button>
+          <div class="split-button" ref="saveWrapper">
+            <button class="main-btn" @click="saveImage">
+              Save
+            </button>
+
+            <button class="arrow-btn" @click.stop="toggleExportMenu">
+              ▼
+            </button>
+
+            <div v-if="exportMenuOpen" class="dropdown">
+              <button @click="setExportBg('white')">
+                Save (White)
+              </button>
+              <button @click="setExportBg('transparent')">
+                Save (Transparent)
+              </button>
+            </div>
+          </div>
           <button @click="copyImage">Copy</button>
         </div>
 
@@ -99,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { useEditorState } from '../state/useEditorState'
 import { useHistory } from '../state/useHistory'
 import { useCanvas } from '../canvas/useCanvas'
@@ -140,6 +153,25 @@ const textTool = useTextTool()
 let canvas: ReturnType<typeof useCanvas>
 let imageManager: ReturnType<typeof useImageManager>
 let exporter: ReturnType<typeof useExporter>
+const exportMenuOpen = ref(false)
+const saveWrapper = ref<HTMLElement | null>(null)
+
+function toggleExportMenu() {
+  console.log(exportMenuOpen.value)
+  exportMenuOpen.value = !exportMenuOpen.value
+}
+
+function setExportBg(value: 'white' | 'transparent') {
+  exportBg.value = value
+  exportMenuOpen.value = false
+  saveImage()
+}
+
+function handleClickOutside(e: MouseEvent) {
+  if (!saveWrapper.value?.contains(e.target as Node)) {
+    exportMenuOpen.value = false
+  }
+}
 
 function render() {
   canvas.render({
@@ -326,6 +358,11 @@ onMounted(() => {
   render()
 
   window.addEventListener('paste', onPaste)
+  document.addEventListener("click", handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside)
 })
 
 async function onOpenImage(e: Event) {

@@ -158,6 +158,75 @@ body {
   color: #000;
 }
 
+.split-button {
+  position: relative;
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: visible;
+  background: #2c2c2c;
+}
+
+.split-button button {
+  border: none;
+  padding: 8px 14px;
+  background: #2c2c2c;
+  color: white;
+  cursor: pointer;
+}
+
+.main-btn:hover,
+.arrow-btn:hover {
+  background: #3a3a3a;
+}
+
+.split-button .arrow-btn {
+  position: relative;
+}
+
+.split-button .arrow-btn::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255,255,255,0.35),
+    transparent
+  );
+}
+
+.main-btn:hover,
+.arrow-btn:hover {
+  background: #3a3a3a;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #2c2c2c;
+  border-radius: 8px;
+  margin-top: 6px;
+  min-width: 160px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.dropdown button {
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.dropdown button:hover {
+  background: #3a3a3a;
+}
+
 @media (min-width: 768px) {
   .toolbar-sheet {
     position: absolute;
@@ -185,6 +254,13 @@ body {
 }
 
 @media (max-width: 767px) {
+  .dropdown {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+  
   .editor-wrapper {
     padding-bottom: 90px;
     margin: 20px auto;
