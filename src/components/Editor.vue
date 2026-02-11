@@ -36,7 +36,9 @@
         </div>
 
         <div class="tool-group">
-          <button @click="setTool('text')"
+          <button 
+            @mousedown.prevent
+            @click="setTool('text')"
             :class="{ active: currentTool === 'text' }">Text</button>
           <input
             type="number"
@@ -75,7 +77,7 @@
         @mousemove="onMove"
         @mouseup="onUp"
 
-        @touchstart.prevent="onTouchStart"
+        @touchstart="onTouchStart"
         @touchmove.prevent="onTouchMove"
         @touchend="onTouchEnd"
         @touchcancel="onTouchEnd"
@@ -85,6 +87,7 @@
       <input
           v-if="isTyping"
           v-model="textValue"
+          ref="inputRef"
           @mousedown.stop
           :style="{
           position: 'absolute',
@@ -97,7 +100,7 @@
           background: 'transparent'
           }"
           @keydown.enter.prevent="commitText"
-          @blur="commitText"
+          @keydown.esc="isTyping = false"
       />
     </div>
   </div>   
@@ -105,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 
 import { useEditorState } from '../state/useEditorState'
 import { useHistory } from '../state/useHistory'
@@ -132,6 +135,13 @@ const fontSize = ref(16)
 const exportBg = ref<'white' | 'transparent'>('white')
 const sheetOpen = ref(false)
 const isDrawing = ref(false)
+const inputRef = ref<HTMLInputElement | null>(null)
+
+const canvasTextX = ref(0)
+const canvasTextY = ref(0)
+
+
+// mobile web
 
 function toggleSheet() {
   sheetOpen.value = !sheetOpen.value
@@ -170,6 +180,16 @@ function onTouchMove(e: TouchEvent) {
 }
 
 function onTouchStart(e: TouchEvent) {
+
+  if (currentTool.value === 'text') {
+    const pos = getTouchPos(e, canvasRef)
+    if (!pos) return
+    startText(pos.x, pos.y)
+    return
+  }
+
+  e.preventDefault()
+
   if (e.touches.length !== 1) return
 
   sheetOpen.value = false
@@ -193,10 +213,9 @@ function onTouchStart(e: TouchEvent) {
     rectTool.start(x, y, strokeColor.value, strokeWidth.value)
   }
 
-  if (currentTool.value === 'text') {
-    startText(x, y)
-  }
 }
+
+// common using
 
 const { images, rects, penStrokes, arrows, texts, clear } = useEditorState()
 
@@ -329,12 +348,30 @@ const textX = ref(0)
 const textY = ref(0)
 
 function startText(x: number, y: number) {
+  console.log(document.activeElement)
+
   render()
+
+  const canvasEl = canvasRef.value!
+  const rect = canvasEl.getBoundingClientRect()
+
+  const scaleX = rect.width / canvasEl.width
+  const scaleY = rect.height / canvasEl.height
 
   isTyping.value = true
   textValue.value = ''
-  textX.value = x
-  textY.value = y
+
+  canvasTextX.value = x
+  canvasTextY.value = y
+
+  textX.value = x * scaleX
+  textY.value = y * scaleY
+
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      inputRef.value?.focus()
+    })
+  })
 }
 
 function commitText() {
@@ -343,7 +380,9 @@ function commitText() {
     textTool,
     textValue: textValue.value,
     x: textX.value,
-    y: textY.value
+    y: textY.value,
+    x1: canvasTextX.value,
+    y2: canvasTextY.value
   })
 
   if (!textValue.value.trim()) {
@@ -353,9 +392,9 @@ function commitText() {
 
   texts.push(
     textTool.create(
-      textX.value,
-      textY.value,
-      textValue.value,
+      canvasTextX.value,
+      canvasTextY.value,
+      textValue.value.trim(),
       strokeColor.value,
       fontSize.value
     )
