@@ -55,6 +55,10 @@
         </div>
 
         <div class="tool-group">
+          <button @click="denoise">Denoise</button>
+        </div>
+
+        <div class="tool-group">
           <div class="split-button" ref="saveWrapper">
             <button class="main-btn" @click="saveImage">
               Save
@@ -125,6 +129,7 @@ import { usePointerController } from '../state/usePointerController.ts'
 import type { ShapeMap } from '../types/ShapeMap.ts'
 import { useImageManager } from '../state/useImageManager.ts'
 import { useExporter } from '../state/useExporter.ts'
+import { medianDenoise } from '../tools/medianDenoise.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -413,6 +418,34 @@ async function onPaste(e: ClipboardEvent) {
     }
   }
 }
+
+async function denoise() {
+  const canvasEl = canvasRef.value!
+  const offscreen = document.createElement('canvas')
+  offscreen.width = canvasEl.width
+  offscreen.height = canvasEl.height
+
+  const offCtx = offscreen.getContext('2d')!
+
+  // vẽ hiện tại sang offscreen
+  offCtx.drawImage(canvasEl, 0, 0)
+
+  // apply median
+  medianDenoise(offCtx, offscreen.width, offscreen.height)
+
+  // apply new image
+  const blob: Blob = await new Promise(resolve =>
+    offscreen.toBlob(b => resolve(b!), 'image/png')
+  )
+
+  const newImage = await imageManager.fromBlob(blob)
+
+  images.splice(0, images.length, newImage)
+
+  history.push()
+  render()
+}
+
 
 </script>
 
