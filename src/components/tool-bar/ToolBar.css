@@ -166,7 +166,8 @@
 .dropdown {
     position: absolute;
     top: 100%;
-    right: 0;
+    left: 0;
+    right: auto;
     background: #2c2c2c;
     border-radius: 8px;
     margin-top: 6px;
@@ -176,6 +177,11 @@
     flex-direction: column;
     overflow: hidden;
     z-index: 1000;
+}
+
+.dropdown.align-right {
+    left: auto;
+    right: 0;
 }
 
 .dropdown button {
@@ -215,10 +221,15 @@
 
 @media (max-width: 767px) {
     .dropdown {
+        left: auto;
         top: auto;
         bottom: 100%;
         margin-top: 0;
         margin-bottom: 8px;
+    }
+
+    .dropdown.align-right {
+        right: auto;
     }
 
     .toolbar-sheet {

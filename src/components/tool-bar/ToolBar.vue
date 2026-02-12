@@ -42,7 +42,7 @@
             </div>
 
             <div class="tool-group">
-                <div class="split-button">
+                <div class="split-button" ref="saveWrapper">
                     <button class="main-btn" @click="$emit('save')">
                     Save
                     </button>
@@ -51,7 +51,8 @@
                     ▼
                     </button>
 
-                    <div v-if="exportMenuOpen" class="dropdown">
+                    <div v-if="exportMenuOpen" class="dropdown"
+                        ref="exportMenuRef" :class="{ 'align-right': alignRight }">
                         <button @click="$emit('set-export-bg', 'white')">
                             Save (White)
                         </button>
@@ -62,13 +63,13 @@
                 </div>
                 <button @click="$emit('copy')">Copy</button>
             </div>
-            
+
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { watch, ref } from 'vue'
+import { watch, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 const props = defineProps<{
   currentTool: string
@@ -93,7 +94,8 @@ const emit = defineEmits([
   'toggle-sheet',
   'update:strokeColor',
   'update:strokeWidth',
-  'update:fontSize'
+  'update:fontSize',
+  'close-export-menu'
 ])
 
 // local mirror để v-model không mutate trực tiếp props
@@ -104,6 +106,40 @@ const localFontSize = ref(props.fontSize)
 watch(localStrokeColor, v => emit('update:strokeColor', v))
 watch(localStrokeWidth, v => emit('update:strokeWidth', v))
 watch(localFontSize, v => emit('update:fontSize', v))
+
+const saveWrapper = ref<HTMLElement | null>(null)
+
+function handleClickOutside(e: MouseEvent) {
+  if (!saveWrapper.value?.contains(e.target as Node)) {
+    emit('close-export-menu')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+// Auto flip dropdown
+
+const exportMenuRef = ref<HTMLElement | null>(null)
+const alignRight = ref(false)
+
+watch(() => props.exportMenuOpen, (open) => {
+  if (!open) return
+
+  nextTick(() => {
+    const rect = exportMenuRef.value?.getBoundingClientRect()
+    if (!rect) return
+    
+    alignRight.value = rect.right > window.innerWidth
+    console.log(alignRight.value)
+  })
+})
+
 </script>
 
 

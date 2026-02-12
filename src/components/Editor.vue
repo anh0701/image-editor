@@ -18,6 +18,7 @@
       @open-image="onOpenImage"
       @toggle-export-menu="toggleExportMenu"
       @set-export-bg="setExportBg"
+      @close-export-menu="exportMenuOpen = false"
 
       @update:strokeColor="strokeColor = $event"
       @update:strokeWidth="strokeWidth = $event"
@@ -58,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useEditorState } from '../state/useEditorState'
 import { useHistory } from '../state/useHistory'
 import { useCanvas } from '../canvas/useCanvas'
@@ -102,7 +103,6 @@ let canvas: ReturnType<typeof useCanvas>
 let imageManager: ReturnType<typeof useImageManager>
 let exporter: ReturnType<typeof useExporter>
 const exportMenuOpen = ref(false)
-const saveWrapper = ref<HTMLElement | null>(null)
 
 function toggleExportMenu() {
   console.log(exportMenuOpen.value)
@@ -113,12 +113,6 @@ function setExportBg(value: 'white' | 'transparent') {
   exportBg.value = value
   exportMenuOpen.value = false
   saveImage()
-}
-
-function handleClickOutside(e: MouseEvent) {
-  if (!saveWrapper.value?.contains(e.target as Node)) {
-    exportMenuOpen.value = false
-  }
 }
 
 function render() {
@@ -306,11 +300,6 @@ onMounted(() => {
   render()
 
   window.addEventListener('paste', onPaste)
-  document.addEventListener("click", handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener("click", handleClickOutside)
 })
 
 async function onOpenImage(e: Event) {
