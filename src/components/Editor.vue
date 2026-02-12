@@ -1,87 +1,29 @@
 <template>
   <div class="editor-wrapper">
-    <div
-      class="toolbar-sheet"
-      :class="{ open: sheetOpen }"
-    >
-      <div class="sheet-handle" @click="toggleSheet"></div>
-      <div class="toolbar mobile">
-        <div class="tool-group primary">
-          <label class="file-btn">
-            Open image
-            <input type="file" accept="image/*" @change="onOpenImage" hidden />
-          </label>
-        </div>
+    <ToolBar
+      :currentTool="currentTool"
+      :strokeColor="strokeColor"
+      :strokeWidth="strokeWidth"
+      :fontSize="fontSize"
+      :exportMenuOpen="exportMenuOpen"
+      :sheetOpen="sheetOpen"
+      @toggle-sheet="toggleSheet"
+      @set-tool="setTool"
+      @undo="undo"
+      @redo="redo"
+      @clear="clearCanvas"
+      @save="saveImage"
+      @copy="copyImage"
+      @denoise="denoise"
+      @open-image="onOpenImage"
+      @toggle-export-menu="toggleExportMenu"
+      @set-export-bg="setExportBg"
 
-        <div class="tool-group primary">
-          <!-- <button @click="setTool('select')"
-            :class="{ active: currentTool === 'select' }">Select</button> -->
-          <button @click="setTool('rect')"
-            :class="{ active: currentTool === 'rect' }">Rect</button>
-          <button @click="setTool('pen')"
-            :class="{ active: currentTool === 'pen' }">Pen</button>
-          <button @click="setTool('arrow')"
-            :class="{ active: currentTool === 'arrow' }">Arrow</button>
-        </div>
+      @update:strokeColor="strokeColor = $event"
+      @update:strokeWidth="strokeWidth = $event"
+      @update:fontSize="fontSize = $event"
+    />
 
-        <div class="tool-group">
-          <input type="color" v-model="strokeColor" />
-          <input
-            type="range"
-            min="1"
-            max="10"
-            v-model.number="strokeWidth"
-          />
-          <span class="value value-chip">{{ strokeWidth }}</span>
-        </div>
-
-        <div class="tool-group">
-          <button 
-            @mousedown.prevent
-            @click="setTool('text')"
-            :class="{ active: currentTool === 'text' }">Text</button>
-          <input
-            type="number"
-            min="10"
-            max="72"
-            v-model.number="fontSize"
-          />
-        </div>
-
-        <div class="tool-group">
-          <button @click="undo">Undo</button>
-          <button @click="redo">Redo</button>
-          <button @click="clearCanvas">Clear</button>
-        </div>
-
-        <div class="tool-group">
-          <button @click="denoise">Denoise</button>
-        </div>
-
-        <div class="tool-group">
-          <div class="split-button" ref="saveWrapper">
-            <button class="main-btn" @click="saveImage">
-              Save
-            </button>
-
-            <button class="arrow-btn" @click.stop="toggleExportMenu">
-              ▼
-            </button>
-
-            <div v-if="exportMenuOpen" class="dropdown">
-              <button @click="setExportBg('white')">
-                Save (White)
-              </button>
-              <button @click="setExportBg('transparent')">
-                Save (Transparent)
-              </button>
-            </div>
-          </div>
-          <button @click="copyImage">Copy</button>
-        </div>
-
-      </div>
-    </div>
     <div>
       <canvas
         ref="canvasRef"
@@ -130,6 +72,7 @@ import type { ShapeMap } from '../types/ShapeMap.ts'
 import { useImageManager } from '../state/useImageManager.ts'
 import { useExporter } from '../state/useExporter.ts'
 import { medianDenoise } from '../tools/medianDenoise.ts'
+import ToolBar from './tool-bar/ToolBar.vue'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
