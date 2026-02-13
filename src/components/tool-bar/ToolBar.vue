@@ -36,9 +36,50 @@
                 <button @click="$emit('redo')">Redo</button>
                 <button @click="$emit('clear')">Clear</button>
             </div>
-
+            <!--          
             <div class="tool-group">
                 <button @click="$emit('denoise')">Denoise</button>
+            </div>
+            -->
+
+            <div class="tool-group">
+
+                <div class="enhance-group" @click.stop>
+                    <button class="enhance-btn" @click="toggleEnhance">
+                        🪄 Enhance
+                        <span class="arrow" :class="{ open: showEnhance }">▾</span>
+                    </button>
+    
+                    <div v-if="showEnhance" class="enhance-panel">
+                        <div class="enhance-section">
+                        <label>Noise Reduction</label>
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            v-model="denoise"
+                            @input="emitEnhance"
+                        />
+                        <span>{{ denoise }}%</span>
+                        </div>
+    
+                        <div class="enhance-section">
+                        <label>Sharpness</label>
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            v-model="sharpen"
+                            @input="emitEnhance"
+                        />
+                        <span>{{ sharpen }}%</span>
+                        </div>
+    
+                        <button class="reset-btn" @click="resetEnhance">
+                        Reset
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="tool-group">
@@ -95,7 +136,8 @@ const emit = defineEmits([
   'update:strokeColor',
   'update:strokeWidth',
   'update:fontSize',
-  'close-export-menu'
+  'close-export-menu',
+  'enhance'
 ])
 
 // local mirror để v-model không mutate trực tiếp props
@@ -139,6 +181,45 @@ watch(() => props.exportMenuOpen, (open) => {
     console.log(alignRight.value)
   })
 })
+
+// 
+
+const showEnhance = ref(false)
+const denoise = ref(50)
+const sharpen = ref(30)
+
+function toggleEnhance() {
+  showEnhance.value = !showEnhance.value
+}
+
+function emitEnhance() {
+  emit("enhance", {
+    denoise: denoise.value / 100,
+    sharpen: sharpen.value / 100
+  })
+}
+
+function resetEnhance() {
+  denoise.value = 50
+  sharpen.value = 30
+  emitEnhance()
+}
+
+function handleEnhanceOutside(e: MouseEvent) {
+  const el = document.querySelector('.enhance-group')
+  if (el && !el.contains(e.target as Node)) {
+    showEnhance.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleEnhanceOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleEnhanceOutside)
+})
+
 
 </script>
 
