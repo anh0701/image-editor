@@ -14,7 +14,7 @@
       @clear="clearCanvas"
       @save="saveImage"
       @copy="copyImage"
-      @denoise="denoise"
+      @enhance="onEnhance"
       @open-image="onOpenImage"
       @toggle-export-menu="toggleExportMenu"
       @set-export-bg="setExportBg"
@@ -72,8 +72,8 @@ import { usePointerController } from '../state/usePointerController.ts'
 import type { ShapeMap } from '../types/ShapeMap.ts'
 import { useImageManager } from '../state/useImageManager.ts'
 import { useExporter } from '../state/useExporter.ts'
-import { medianDenoise } from '../tools/medianDenoise.ts'
 import ToolBar from './tool-bar/ToolBar.vue'
+import { useImageProcessor } from '../state/useImageProcessor.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -103,6 +103,7 @@ let canvas: ReturnType<typeof useCanvas>
 let imageManager: ReturnType<typeof useImageManager>
 let exporter: ReturnType<typeof useExporter>
 const exportMenuOpen = ref(false)
+let processor: ReturnType<typeof useImageProcessor>
 
 function toggleExportMenu() {
   console.log(exportMenuOpen.value)
@@ -295,6 +296,7 @@ onMounted(() => {
   canvas = useCanvas(ctx)
   imageManager = useImageManager(ctx)
   exporter = useExporter(canvasRef)
+  processor = useImageProcessor(ctx)
 
   history.reset()
   render()
@@ -313,6 +315,9 @@ async function onOpenImage(e: Event) {
 
   history.push()
   render()
+
+  await nextTick()
+  processor.captureOriginal(canvasRef.value!.width, canvasRef.value!.height)
 }
 
 function saveImage() {
@@ -351,32 +356,14 @@ async function onPaste(e: ClipboardEvent) {
   }
 }
 
-async function denoise() {
+function onEnhance(payload: { denoise: number; sharpen: number }) {
   const canvasEl = canvasRef.value!
-  const offscreen = document.createElement('canvas')
-  offscreen.width = canvasEl.width
-  offscreen.height = canvasEl.height
-
-  const offCtx = offscreen.getContext('2d')!
-
-  // vẽ hiện tại sang offscreen
-  offCtx.drawImage(canvasEl, 0, 0)
-
-  // apply median
-  medianDenoise(offCtx, offscreen.width, offscreen.height)
-
-  // apply new image
-  const blob: Blob = await new Promise(resolve =>
-    offscreen.toBlob(b => resolve(b!), 'image/png')
-  )
-
-  const newImage = await imageManager.fromBlob(blob)
-
-  images.splice(0, images.length, newImage)
+  processor.applyEnhance(canvasEl.width, canvasEl.height, payload)
 
   history.push()
   render()
 }
+
 
 
 </script>

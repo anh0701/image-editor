@@ -1,27 +1,26 @@
 // Sharpened = Original + amount * (Original - Blur)
 
 export function unsharpMask(
-  ctx: CanvasRenderingContext2D,
+  src: ImageData,
   width: number,
   height: number,
   amount = 0.8
-) {
-  const imageData = ctx.getImageData(0, 0, width, height)
-  const data = imageData.data
+): ImageData {
 
-  // clone để làm blur
   const tempCanvas = document.createElement("canvas")
   tempCanvas.width = width
   tempCanvas.height = height
   const tempCtx = tempCanvas.getContext("2d")!
 
-  tempCtx.putImageData(imageData, 0, 0)
+  tempCtx.putImageData(src, 0, 0)
 
   // blur nhẹ 
   tempCtx.filter = "blur(1px)"
   tempCtx.drawImage(tempCanvas, 0, 0)
 
   const blurred = tempCtx.getImageData(0, 0, width, height).data
+
+  const data = src.data
 
   const output = new Uint8ClampedArray(data.length)
 
@@ -33,6 +32,6 @@ export function unsharpMask(
     output[i + 3] = data[i + 3]!
   }
 
-  imageData.data.set(output)
-  ctx.putImageData(imageData, 0, 0)
+  console.log(output)
+  return new ImageData(output, width, height)
 }
