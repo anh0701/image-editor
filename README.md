@@ -14,4 +14,4 @@ Mode:
 
 # image editor
 
-![demo](public/demo.png)
+![demo](public/demo.png)  

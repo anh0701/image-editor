@@ -1,10 +1,9 @@
 export function medianDenoise(
-    ctx: CanvasRenderingContext2D,
+    src: ImageData,
     width: number,
     height: number
-) {
-    const imageData = ctx.getImageData(0, 0, width, height)
-    const data = imageData.data
+): ImageData {
+    const data = src.data
     const output = new Uint8ClampedArray(data)
 
     const getIndex = (x: number, y: number) => (y * width + x) * 4
@@ -36,12 +35,12 @@ export function medianDenoise(
             output[centerIdx] = median9(rVals)
             output[centerIdx + 1] = median9(gVals)
             output[centerIdx + 2] = median9(bVals)
+            output[centerIdx + 3] = data[centerIdx + 3]!
         }
     }
 
-    imageData.data.set(output)
-    ctx.putImageData(imageData, 0, 0)
-    console.log(imageData)
+    console.log(output)
+    return new ImageData(output, width, height)
 }
 
 // The median of the sequence of 9 numbers = the 5th largest number. 
@@ -63,4 +62,20 @@ function median9(values: number[]): number {
     }
 
     return v[4]!
+}
+
+
+export function blend(original: ImageData, denoised: ImageData, amount: number) {
+  const out = new Uint8ClampedArray(original.data.length)
+
+  for (let i = 0; i < out.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      out[i + c] =
+        original.data[i + c]! * (1 - amount) +
+        denoised.data[i + c]! * amount
+    }
+    out[i + 3] = original.data[i + 3]!
+  }
+
+  return new ImageData(out, original.width, original.height)
 }

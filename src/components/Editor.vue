@@ -1,87 +1,30 @@
 <template>
   <div class="editor-wrapper">
-    <div
-      class="toolbar-sheet"
-      :class="{ open: sheetOpen }"
-    >
-      <div class="sheet-handle" @click="toggleSheet"></div>
-      <div class="toolbar mobile">
-        <div class="tool-group primary">
-          <label class="file-btn">
-            Open image
-            <input type="file" accept="image/*" @change="onOpenImage" hidden />
-          </label>
-        </div>
+    <ToolBar
+      :currentTool="currentTool"
+      :strokeColor="strokeColor"
+      :strokeWidth="strokeWidth"
+      :fontSize="fontSize"
+      :exportMenuOpen="exportMenuOpen"
+      :sheetOpen="sheetOpen"
+      @toggle-sheet="toggleSheet"
+      @set-tool="setTool"
+      @undo="undo"
+      @redo="redo"
+      @clear="clearCanvas"
+      @save="saveImage"
+      @copy="copyImage"
+      @enhance="onEnhance"
+      @open-image="onOpenImage"
+      @toggle-export-menu="toggleExportMenu"
+      @set-export-bg="setExportBg"
+      @close-export-menu="exportMenuOpen = false"
 
-        <div class="tool-group primary">
-          <!-- <button @click="setTool('select')"
-            :class="{ active: currentTool === 'select' }">Select</button> -->
-          <button @click="setTool('rect')"
-            :class="{ active: currentTool === 'rect' }">Rect</button>
-          <button @click="setTool('pen')"
-            :class="{ active: currentTool === 'pen' }">Pen</button>
-          <button @click="setTool('arrow')"
-            :class="{ active: currentTool === 'arrow' }">Arrow</button>
-        </div>
+      @update:strokeColor="strokeColor = $event"
+      @update:strokeWidth="strokeWidth = $event"
+      @update:fontSize="fontSize = $event"
+    />
 
-        <div class="tool-group">
-          <input type="color" v-model="strokeColor" />
-          <input
-            type="range"
-            min="1"
-            max="10"
-            v-model.number="strokeWidth"
-          />
-          <span class="value value-chip">{{ strokeWidth }}</span>
-        </div>
-
-        <div class="tool-group">
-          <button 
-            @mousedown.prevent
-            @click="setTool('text')"
-            :class="{ active: currentTool === 'text' }">Text</button>
-          <input
-            type="number"
-            min="10"
-            max="72"
-            v-model.number="fontSize"
-          />
-        </div>
-
-        <div class="tool-group">
-          <button @click="undo">Undo</button>
-          <button @click="redo">Redo</button>
-          <button @click="clearCanvas">Clear</button>
-        </div>
-
-        <div class="tool-group">
-          <button @click="denoise">Denoise</button>
-        </div>
-
-        <div class="tool-group">
-          <div class="split-button" ref="saveWrapper">
-            <button class="main-btn" @click="saveImage">
-              Save
-            </button>
-
-            <button class="arrow-btn" @click.stop="toggleExportMenu">
-              ▼
-            </button>
-
-            <div v-if="exportMenuOpen" class="dropdown">
-              <button @click="setExportBg('white')">
-                Save (White)
-              </button>
-              <button @click="setExportBg('transparent')">
-                Save (Transparent)
-              </button>
-            </div>
-          </div>
-          <button @click="copyImage">Copy</button>
-        </div>
-
-      </div>
-    </div>
     <div>
       <canvas
         ref="canvasRef"
@@ -116,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useEditorState } from '../state/useEditorState'
 import { useHistory } from '../state/useHistory'
 import { useCanvas } from '../canvas/useCanvas'
@@ -129,7 +72,8 @@ import { usePointerController } from '../state/usePointerController.ts'
 import type { ShapeMap } from '../types/ShapeMap.ts'
 import { useImageManager } from '../state/useImageManager.ts'
 import { useExporter } from '../state/useExporter.ts'
-import { medianDenoise } from '../tools/medianDenoise.ts'
+import ToolBar from './tool-bar/ToolBar.vue'
+import { useImageProcessor } from '../state/useImageProcessor.ts'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D
@@ -159,7 +103,7 @@ let canvas: ReturnType<typeof useCanvas>
 let imageManager: ReturnType<typeof useImageManager>
 let exporter: ReturnType<typeof useExporter>
 const exportMenuOpen = ref(false)
-const saveWrapper = ref<HTMLElement | null>(null)
+let processor: ReturnType<typeof useImageProcessor>
 
 function toggleExportMenu() {
   console.log(exportMenuOpen.value)
@@ -170,12 +114,6 @@ function setExportBg(value: 'white' | 'transparent') {
   exportBg.value = value
   exportMenuOpen.value = false
   saveImage()
-}
-
-function handleClickOutside(e: MouseEvent) {
-  if (!saveWrapper.value?.contains(e.target as Node)) {
-    exportMenuOpen.value = false
-  }
 }
 
 function render() {
@@ -358,16 +296,12 @@ onMounted(() => {
   canvas = useCanvas(ctx)
   imageManager = useImageManager(ctx)
   exporter = useExporter(canvasRef)
+  processor = useImageProcessor(ctx)
 
   history.reset()
   render()
 
   window.addEventListener('paste', onPaste)
-  document.addEventListener("click", handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener("click", handleClickOutside)
 })
 
 async function onOpenImage(e: Event) {
@@ -381,6 +315,9 @@ async function onOpenImage(e: Event) {
 
   history.push()
   render()
+
+  await nextTick()
+  processor.captureOriginal(canvasRef.value!.width, canvasRef.value!.height)
 }
 
 function saveImage() {
@@ -419,32 +356,14 @@ async function onPaste(e: ClipboardEvent) {
   }
 }
 
-async function denoise() {
+function onEnhance(payload: { denoise: number; sharpen: number }) {
   const canvasEl = canvasRef.value!
-  const offscreen = document.createElement('canvas')
-  offscreen.width = canvasEl.width
-  offscreen.height = canvasEl.height
+  processor.applyEnhance(canvasEl.width, canvasEl.height, payload)
 
-  const offCtx = offscreen.getContext('2d')!
-
-  // vẽ hiện tại sang offscreen
-  offCtx.drawImage(canvasEl, 0, 0)
-
-  // apply median
-  medianDenoise(offCtx, offscreen.width, offscreen.height)
-
-  // apply new image
-  const blob: Blob = await new Promise(resolve =>
-    offscreen.toBlob(b => resolve(b!), 'image/png')
-  )
-
-  const newImage = await imageManager.fromBlob(blob)
-
-  images.splice(0, images.length, newImage)
-
-  history.push()
-  render()
+  // history.push()
+  // render()
 }
+
 
 
 </script>
