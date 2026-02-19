@@ -360,8 +360,8 @@ function onEnhance(payload: { denoise: number; sharpen: number }) {
   const canvasEl = canvasRef.value!
   processor.applyEnhance(canvasEl.width, canvasEl.height, payload)
 
-  history.push()
-  render()
+  // history.push()
+  // render()
 }
 
 
